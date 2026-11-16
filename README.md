@@ -100,7 +100,10 @@ npm run dmg       # optional: dist/Dialpal-<version>-arm64.dmg
 npm test                        # unit tests and the UI click-through
 DIALPAL_SKIP_UI=1 npm test      # skip the UI tests
 node scripts/screenshots.mjs    # regenerate docs/images/
+ANTHROPIC_API_KEY=… node test/sales-eval.js   # real-model check of Sales replies
 ```
+
+`test/sales-eval.js` runs 14 call moments (opener, pitch, each common objection, a price question, a fact not in the brief, the meeting ask, do-not-call) against a real model. It checks each reply against the rules: a short spoken line, numbers only from the brief, a forward question, two time options, no invented integrations, do-not-call honoured. It also asks the model, playing a busy finance buyer, to score each line 1-10 for how likely it is to get a meeting. `EVAL_ONLY="opener|budget"` runs a subset; `EVAL_PROVIDER=openai EVAL_BASE_URL=… OPENAI_API_KEY=…` targets another provider. Read the replies as well: the checks can't judge everything.
 
 The UI tests launch the real app in test mode (`DIALPAL_TEST_DIR`) and drive it over the DevTools protocol, with a fake OpenAI-compatible server answering. Speech tests use small stand-in model files, so they never download the real model.
 

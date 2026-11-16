@@ -134,8 +134,15 @@ test("sales replies end with a Stage line: read for the console, dropped everywh
 
 test("the rep drives the call: opener, pitch and the meeting ask on request, the rep's own script used", () => {
   const p = systemPrompt("sales", "", "", "");
-  assert.match(p, /"Rep asks: … opener": give the opener: .*what the company does in one plain line/);
+  assert.match(p, /"Rep asks: … opener": the opener: .*what the company does for people like them in one plain line/);
+  assert.match(p, /permission ask that gives an out/);
   assert.match(p, /"Rep asks: … pitch": the pitch now/);
   assert.match(p, /"Rep asks: … ask for the meeting"/);
   assert.match(p, /rep's own opener or pitch written out: use it nearly word for word/);
+});
+
+test("the sales prompt sells honestly: their problem first, one proof point, quantified pain, a small specific ask", () => {
+  const p = systemPrompt("sales", "", "", "");
+  for (const rule of ["Their world, not ours", "one concrete result from the brief", "ask what it costs them", "two time options", "ends by moving forward", "Never invent a number, a customer or a result", "false familiarity"]) assert.ok(p.includes(rule), rule);
+  for (const banned of ['"how are you today"', '"just checking in"', '"does that make sense?"', '"sorry to bother you"']) assert.ok(p.includes(banned), banned);
 });
