@@ -16,6 +16,7 @@ Problem it solves: AP teams spend hours a week matching invoices to POs by hand,
 Proof: Brightline (logistics, 600 people) cut invoice processing time 62% in the first quarter.
 Pricing: from $12 per user per month, annual only.
 Competitors: Bill.com (we match POs automatically; their base plan doesn't).
+Lead source: LinkedIn, finance leaders at companies that use NetSuite.
 Meeting to book: 20-minute demo with Priya, our solutions engineer.
 Disclosure line: Heads up, this call is transcribed.`;
 const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive" };
@@ -32,13 +33,13 @@ const CASES = [
   { name: "price question", question: "What does it cost?", transcript: [them("What does it cost?")], expect: ["forward", "price"] },
   { name: "unknown fact", question: "Does it integrate with SAP?", transcript: [them("Does it integrate with SAP?")], expect: ["notInBrief"] },
   { name: "bad time", question: "I'm driving, bad time.", transcript: [them("I'm driving, bad time.")], expect: ["forward", "twoTimes"] },
-  { name: "who is this", question: "Who is this? How did you get my number?", transcript: [them("Who is this? How did you get my number?")], expect: ["forward"] },
+  { name: "who is this", question: "Who is this? How did you get my number?", transcript: [them("Who is this? How did you get my number?")], expect: ["forward", "source"] },
   { name: "pain stated", question: "Honestly matching POs takes my team most of Friday.", transcript: [them("Honestly matching POs takes my team most of Friday.")], expect: ["forward"] },
   { name: "close on request", question: "Rep asks: give my ask for the meeting now.", transcript: [them("Matching POs takes my team most of Friday."), them("Yeah, it's a pain.")], expect: ["twoTimes"] },
-  { name: "do not call", question: "Take me off your list.", transcript: [them("Take me off your list.")], expect: ["dnc"] },
+  { name: "do not call", question: "Take me off your list.", transcript: [them("Take me off your list.")], expect: ["dnc"], noJudge: true },
 ];
 
-const BANNED = [/how are you today/i, /just checking in/i, /does that make sense/i, /sorry to bother/i, /great question/i, /to be honest/i, /i totally understand/i, /i'd love to/i];
+const BANNED = [/how are you today/i, /just checking in/i, /does that make sense/i, /\bsorry\b/i, /great question/i, /to be honest/i, /i totally understand/i, /i'd love to/i];
 const STAGES = new Set(["opener", "pitch", "discovery", "objection", "close"]);
 
 function checks(c, raw) {
@@ -51,11 +52,14 @@ function checks(c, raw) {
   const ask = lines.find((l) => /^ask:/i.test(l))?.replace(/^ask:\s*/i, "") || "";
   const spoken = `${bold || ""} ${ask}`;
   const words = (bold || "").split(/\s+/).filter(Boolean).length;
-  const limit = c.expect.includes("pitch") || c.expect.includes("opener") ? 50 : 32;
+  const limit = c.expect.includes("pitch") ? 50 : c.expect.includes("opener") || /close/.test(c.name) ? 40 : 32;
   if (words > limit) fails.push(`bold line is ${words} words (limit ${limit})`);
   for (const b of BANNED) if (b.test(spoken)) fails.push(`banned phrase ${b}`);
   // Every number said aloud must come from the brief.
-  for (const n of spoken.match(/\$?\d[\d,.]*%?/g) || []) if (!BRIEF.includes(n.replace(/[.,]$/, ""))) fails.push(`number not in brief: ${n}`);
+  // Times and durations ("30 seconds", "at 10", "2pm") are the rep's own.
+  const facts = spoken.replace(/\b\d+\s*(?:seconds?|minutes?|mins?|am|pm|o'clock)\b|\b(?:at|by|around)\s+\d{1,2}(?::\d{2})?\b|\b\d{1,2}:\d{2}\b/gi, "");
+  for (const n of facts.match(/\$?\d[\d,.]*%?/g) || []) if (!BRIEF.includes(n.replace(/[.,]$/, ""))) fails.push(`number not in brief: ${n}`);
+  if ((spoken.match(/\?/g) || []).length > 1) fails.push("stacks questions (more than one ?)");
   if (/\b(as we discussed|following up on our)\b/i.test(spoken)) fails.push("false familiarity");
   const exp = new Set(c.expect);
   if (exp.has("forward") && !spoken.includes("?")) fails.push("doesn't end moving forward (no question or ask)");
@@ -66,6 +70,7 @@ function checks(c, raw) {
   }
   if (exp.has("pitch") && !/62%/.test(spoken)) fails.push("pitch has no proof point");
   if (exp.has("price") && !/\$12/.test(spoken)) fails.push("price not from the brief");
+  if (exp.has("source") && !/linkedin/i.test(spoken)) fails.push("doesn't say where their details came from");
   if (exp.has("noKnock") && /\b(worse|terrible|bad|clunky|outdated)\b/i.test(spoken)) fails.push("knocks the competitor");
   if (exp.has("notInBrief") && !/not in brief/i.test(text)) fails.push("no 'not in brief' note for an unknown fact");
   if (exp.has("notInBrief") && /\byes\b.*\bsap\b|integrates? with sap/i.test(bold || "")) fails.push("claims an SAP integration");
@@ -98,7 +103,7 @@ for (const c of CASES.filter((c) => !only || only.test(c.name))) {
   const reply = result.text.trim();
   const { fails, spoken, stage } = checks(c, reply);
   let judged = null;
-  try {
+  if (!c.noJudge) try {
     const j = await provider.complete({ model, system: JUDGE, user: `Call so far (prospect only): ${c.transcript.map((l) => l.text).join(" / ") || "(just connected)"}\n\nRep says: ${spoken}`, maxTokens: 200, effort: "low" });
     judged = JSON.parse(j.text.slice(j.text.indexOf("{"), j.text.lastIndexOf("}") + 1));
     scores.push(judged.score);

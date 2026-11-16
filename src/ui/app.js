@@ -1557,6 +1557,7 @@ Problem it solves:
 Proof: customers, results with numbers
 Pricing: what you can say on a call
 Competitors: who they use today, how you differ
+Lead source: how you found them, for "how did you get my number?" (e.g. "LinkedIn, finance leaders at NetSuite companies")
 Meeting to book: e.g. 20-minute demo with an AE
 Opener (optional, your own words): e.g. "Hi Dana, it's Sam from Ledgerly. We automate invoice matching for finance teams. Got 30 seconds?"
 Pitch (optional, your own words):

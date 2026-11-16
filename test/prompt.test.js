@@ -144,5 +144,8 @@ test("the rep drives the call: opener, pitch and the meeting ask on request, the
 test("the sales prompt sells honestly: their problem first, one proof point, quantified pain, a small specific ask", () => {
   const p = systemPrompt("sales", "", "", "");
   for (const rule of ["Their world, not ours", "one concrete result from the brief", "ask what it costs them", "two time options", "ends by moving forward", "Never invent a number, a customer or a result", "false familiarity"]) assert.ok(p.includes(rule), rule);
-  for (const banned of ['"how are you today"', '"just checking in"', '"does that make sense?"', '"sorry to bother you"']) assert.ok(p.includes(banned), banned);
+  for (const banned of ['"how are you today"', '"just checking in"', '"does that make sense?"', '"sorry to bother you"', '"sorry for the interruption"']) assert.ok(p.includes(banned), banned);
+  assert.ok(p.includes("One question per reply, in total"));
+  assert.ok(p.includes("Hear the no first"));
+  assert.ok(p.includes("lead source"));
 });
