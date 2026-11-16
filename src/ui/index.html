@@ -271,6 +271,18 @@
                 <div class="row-text"><span>Save notes</span><small id="saveNotesMeta">Summary, decisions, action items and full transcript, to Documents/Dialpal</small></div>
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12" /></svg></span>
               </button>
+              <button class="row link" id="statsBtn">
+                <div class="row-text"><span>Call stats</span><small id="statsMeta">Booked rate and the objections you hear most</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="callLogBtn">
+                <div class="row-text"><span>Call log</span><small>Every saved call as a spreadsheet (calls.csv), for import into any CRM</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="hubspotBtn">
+                <div class="row-text"><span>HubSpot</span><small id="hubspotMeta">Log each saved call to HubSpot</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
               <button class="row link" id="clearBtn">
                 <div class="row-text"><span>Clear session</span><small>Forget the transcript, answers and screenshots</small></div>
               </button>
@@ -514,6 +526,85 @@
           <p class="usage" id="answerUsage" hidden></p>
         </article>
 
+        <section class="practice-call" id="practiceCall" hidden>
+          <div class="pc-head">
+            <div class="pc-who"><span class="pc-lamp" aria-hidden="true"></span><span id="pcName"></span><span class="pc-timer" id="pcTimer"></span></div>
+            <button type="button" class="ghost danger small" id="pcEnd">End call</button>
+          </div>
+          <p class="pc-status" id="pcStatus"></p>
+          <ol class="pc-log" id="pcLog"></ol>
+        </section>
+
+        <form class="instructions practice-setup" id="practicePanel" hidden>
+          <p class="lead">Practice a cold call</p>
+          <p class="hint" id="practiceHint">An AI prospect picks up and talks back. Speak into your mic, or type your lines. Press ⌘↵ any time for a hint. When you end the call you get a score.</p>
+          <div class="persona-cards" id="personaCards" role="radiogroup" aria-label="Who picks up"></div>
+          <div class="ob-grid">
+            <label>Their company (optional)<input id="practiceCompany" maxlength="120" placeholder="e.g. a 300-person logistics firm" autocomplete="off" /></label>
+          </div>
+          <button class="row" id="practiceVoiceToggle" role="switch" type="button">
+            <div class="row-text"><span>Speak their lines aloud</span><small>Uses your Mac's voices. Wear headphones for the cleanest mic.</small></div>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+          <p class="hint caution" id="practiceBriefWarn" hidden>No product brief yet, so the prospect assumes a generic software product. Add one in Settings › Sales for realistic practice.</p>
+          <p class="hint" id="practiceClearNote" hidden>Starting clears this session. Save notes first if you need them.</p>
+          <div class="formrow">
+            <button type="button" class="ghost" id="practiceCancel">Cancel</button>
+            <button type="submit" class="primary" id="practiceStart">Start practice call</button>
+          </div>
+        </form>
+
+        <section class="scorecard" id="scorecardPanel" hidden>
+          <div class="sc-head">
+            <div class="sc-score"><span id="scScore"></span><small>/10</small></div>
+            <div class="sc-title"><p class="lead" id="scTitle"></p><p class="hint" id="scMeta"></p></div>
+          </div>
+          <ul class="sc-parts" id="scParts"></ul>
+          <div id="scLists"></div>
+          <div class="formrow">
+            <button type="button" class="ghost" id="scDone">Done</button>
+            <button type="button" class="primary" id="scAgain">Practice again</button>
+          </div>
+        </section>
+
+        <section class="instructions stats" id="statsPanel" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">Call stats</p>
+          <p class="hint" id="statsEmpty" hidden>No calls logged yet. Each time you save notes after a call, it's added here.</p>
+          <div class="stat-tiles" id="statTiles"></div>
+          <h2 id="objHead">Objections you hear most</h2>
+          <table class="obj-table" id="objTable"><thead><tr><th>Objection</th><th>Heard</th><th>Handled</th><th>Booked after</th></tr></thead><tbody></tbody></table>
+          <h2 id="outcomeHead">How calls ended</h2>
+          <ul class="outcome-bars" id="outcomeBars"></ul>
+          <h2 id="practiceHead">Practice</h2>
+          <p class="hint" id="practiceStats"></p>
+          <div class="formrow">
+            <button type="button" class="ghost" id="statsLog">Open call log</button>
+            <button type="button" class="primary" id="statsDone">Done</button>
+          </div>
+        </section>
+
+        <form class="instructions" id="hubspotForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">HubSpot</p>
+          <p class="hint">Each time you save notes after a real call, Dialpal logs it in HubSpot as a call with the outcome, objections and next step, on the contact when their email came up. Practice calls are never sent.</p>
+          <p class="hint">Create a private app in HubSpot (Settings › Integrations › Private apps) with the scopes <strong>crm.objects.calls.write</strong> and <strong>crm.objects.contacts.read</strong>, then paste its token. It's kept in your macOS keychain.</p>
+          <div class="ob-grid">
+            <label>Private app token<input id="hubspotToken" type="password" class="mono" autocomplete="off" spellcheck="false" placeholder="pat-…" /></label>
+          </div>
+          <button class="row" id="hubspotToggle" role="switch" type="button">
+            <div class="row-text"><span>Log calls to HubSpot</span><small id="hubspotToggleHint">Needs a saved token</small></div>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+          <p class="model-status" id="hubspotStatus"></p>
+          <div class="formrow">
+            <button type="button" class="ghost danger" id="hubspotRemove">Remove token</button>
+            <button type="button" class="ghost" id="hubspotTest">Test connection</button>
+            <button type="button" class="ghost" id="hubspotCancel">Cancel</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+
         <section class="transcript" id="transcript" hidden>
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
           <p class="empty-note" id="transcriptEmpty">Nothing heard yet. Press Listen to start.</p>
@@ -539,6 +630,7 @@
             <div class="modemenu" id="modeMenu" role="menu" aria-label="Answer mode" hidden>
               <button type="button" role="menuitemradio" data-value="meeting"><span>Meeting</span><small id="modeMeetingHint">Brief answers about the call and your screen</small></button>
               <button type="button" role="menuitemradio" data-value="sales"><span>Sales</span><small>Your next line on a sales call, from your product brief</small></button>
+              <button type="button" role="menuitem" data-value="practice" class="modemenu-practice"><span>Practice call…</span><small>Rehearse with an AI prospect, then get a score</small></button>
             </div>
           </div>
           <form class="ask" id="askForm">

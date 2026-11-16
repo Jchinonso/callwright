@@ -105,6 +105,7 @@ export class Listener extends EventEmitter {
     this.running = false;
     this.heardSound = false; // any sound since Dialpal opened
     this.warnedSilent = false;
+    this.role = "them"; // whose words its lines are
   }
 
   // Loads the model when Dialpal opens, so the first Listen is instant.
@@ -218,8 +219,56 @@ export class Listener extends EventEmitter {
       const transcribedAt = Date.now();
       // start: when the speech began; at: when it ended. decodeMs: the
       // engine's own time; transcribeMs adds the trip to and from it.
-      if (text) this.emit("line", { role: "them", text, at, start: at - Math.round((pcm.length / 2 / SAMPLE_RATE) * 1000), transcribeMs: transcribedAt - began, decodeMs: r.ms, transcribedAt, queued: this.pending.length, via: "parakeet" });
+      if (text) this.emit("line", { role: this.role, text, at, start: at - Math.round((pcm.length / 2 / SAMPLE_RATE) * 1000), transcribeMs: transcribedAt - began, decodeMs: r.ms, transcribedAt, queued: this.pending.length, via: "parakeet" });
     }
     this.working = false;
+  }
+}
+
+// The rep's own microphone, for practice calls only (a real call never
+// records the mic). The window captures it and sends 16 kHz int16 chunks;
+// this cuts them into phrases and transcribes them like the call audio.
+// muted: while the practice prospect's voice plays through the speakers, so
+// the mic doesn't hear the prospect and take it for the rep.
+export class MicListener extends Listener {
+  constructor(options) {
+    super(options);
+    this.role = "me";
+    this.muted = false;
+  }
+
+  start() {
+    if (this.running) return true;
+    if (!this.asr) {
+      this.emit("error", "The speech model is missing. Quit and reopen Dialpal to download it.");
+      return false;
+    }
+    this.running = true;
+    this.reportedFailure = false;
+    this.them = new Segmenter();
+    this.them.on("segment", (pcm) => this.enqueue(pcm));
+    return true;
+  }
+
+  push(chunk) {
+    if (!this.running || this.muted) return;
+    this.them.push(chunk);
+  }
+
+  // Unmuting starts a fresh segment, so the tail of the prospect's voice
+  // caught before the mute isn't joined to the rep's next words.
+  setMuted(muted) {
+    if (this.muted === muted) return;
+    this.muted = muted;
+    if (!muted && this.running) {
+      this.them = new Segmenter();
+      this.them.on("segment", (pcm) => this.enqueue(pcm));
+    }
+  }
+
+  stop() {
+    if (!this.running) return;
+    this.running = false;
+    this.them?.flush();
   }
 }

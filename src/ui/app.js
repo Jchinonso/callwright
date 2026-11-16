@@ -100,7 +100,7 @@ function escapeHtml(s) {
 }
 
 function line({ role, text }) {
-  const who = role === "me" ? "You" : "Them";
+  const who = role === "me" ? "You" : state.practice?.active || state.practice?.scoring ? state.practice.name?.split(" ")[0] || "Them" : "Them";
   return `<span class="who ${role}">${who}</span>${escapeHtml(text)}`;
 }
 
@@ -114,11 +114,14 @@ function formatElapsed(ms) {
 
 function renderTimer() {
   $("timer").textContent = state.listening && state.listeningSince ? formatElapsed(Date.now() - state.listeningSince) : "";
+  const p = state.practice;
+  $("pcTimer").textContent = p?.active && p.startedAt ? formatElapsed(Date.now() - p.startedAt) : "";
 }
 setInterval(renderTimer, 1000);
 
 function renderStrip() {
   document.body.classList.toggle("listening", !!state.listening);
+  document.body.classList.toggle("practicing", !!state.practice?.active);
   document.body.classList.toggle("answering", !!state.busy);
   renderTimer();
   const cloak = $("cloakBtn");
@@ -195,6 +198,7 @@ function renderMenu() {
   $("autoAnswerHint").textContent = state.style === "sales"
     ? "While listening, shows your reply as soon as the prospect finishes talking, so you don't have to press Answer."
     : "Only works in Sales mode, which is off. Switch with the menu beside the question box.";
+  $("hubspotMeta").textContent = state.hubspotEnabled ? `On · token ending ${state.hubspotHint}` : state.hubspotHint ? "Off · token saved" : "Log each saved call to HubSpot";
   const sp = state.spend || { input: 0, output: 0, dollars: 0 };
   $("spendTotal").textContent = sp.dollars ? `about ${formatDollars(sp.dollars)}` : "";
   $("spendMeta").textContent = sp.dollars
@@ -323,7 +327,21 @@ function renderStage() {
   $("profileForm").hidden = !prof;
   const wipe = !needsKey && !onb && panel === "wipe";
   $("wipeForm").hidden = !wipe;
-  const covered = needsKey || onb || instr || doc || prof || wipe || settings || shortcutsOpen;
+  const practiceSetup = !needsKey && !onb && panel === "practice";
+  $("practicePanel").hidden = !practiceSetup;
+  if (practiceSetup) renderPracticeSetup();
+  const statsOpen = !needsKey && !onb && panel === "stats";
+  $("statsPanel").hidden = !statsOpen;
+  const hubspot = !needsKey && !onb && panel === "hubspot";
+  $("hubspotForm").hidden = !hubspot;
+  if (hubspot) renderHubSpot();
+  const scorecard = !needsKey && !onb && panel === "scorecard" && !!state.practice?.scorecard;
+  $("scorecardPanel").hidden = !scorecard;
+  if (scorecard) renderScorecard(state.practice.scorecard);
+  const covered = needsKey || onb || instr || doc || prof || wipe || settings || shortcutsOpen || practiceSetup || statsOpen || hubspot || scorecard;
+  const inCall = !!(state.practice?.active || state.practice?.scoring);
+  $("practiceCall").hidden = covered || view !== "answers" || !inCall;
+  if (!$("practiceCall").hidden) renderPracticeCall();
   $("jdCard").hidden = !askingJob || covered;
   $("jdCloak").hidden = !!state.invisible;
   // No product brief saved yet: replies can't know what you sell.
@@ -334,7 +352,7 @@ function renderStage() {
   $("jdSame").textContent = hasJob ? "Same brief" : "Not now";
   $("jdSame").hidden = false;
   $("jdNew").textContent = hasJob ? "Edit brief" : "Add brief";
-  $("welcome").hidden = covered || view !== "answers" || answers.length > 0;
+  $("welcome").hidden = covered || view !== "answers" || answers.length > 0 || inCall;
   $("answer").hidden = covered || view !== "answers" || page < 0;
   $("transcript").hidden = covered || view !== "transcript";
   // After the first answer, the full guide shrinks to one line of hints.
@@ -412,7 +430,8 @@ function renderStage() {
 function renderAskBtn() {
   const stop = !!state.busy && !$("question").value.trim();
   $("askBtn").classList.toggle("stop", stop);
-  const verb = state.style === "sales" ? "Reply" : "Ask";
+  const practicing = !!state.practice?.active;
+  const verb = practicing ? ($("question").value.trim() ? "Say" : "Hint") : state.style === "sales" ? "Reply" : "Ask";
   $("askBtn").textContent = stop ? "Stop" : verb;
   $("askBtn").title = stop ? "Stop this answer" : `${verb} (${plainKeys(state.shortcuts?.ask || "")})`;
 }
@@ -433,6 +452,7 @@ function renderShots() {
     .join("");
   $("question").placeholder = shots.length
     ? `Ask about ${shots.length === 1 ? "this screenshot" : `these ${shots.length} screenshots`}, or press Ask`
+    : state.practice?.active ? "Talk, or type your line and press Say. Empty: Hint"
     : state.style === "sales" ? "Type what they said, or press Reply" : "Type a question, or press Ask";
 }
 
@@ -586,6 +606,13 @@ let stillHearing = () => g.stillHearing(); // replaced in the UI tests
 async function submit({ form = false } = {}) {
   if (onboarding) return; // shortcuts wait until setup is done
   const typed = $("question").value.trim();
+  // In a practice call, what you type is your line to the prospect; ⌘↵ with
+  // nothing typed asks for a hint (a Sales reply) below.
+  if (state.practice?.active && typed) {
+    $("question").value = "";
+    renderAskBtn();
+    return g.practiceSay(typed);
+  }
   // Waiting for a heard question to finish: only a typed question takes over.
   if (waitingForQuestion) {
     if (!typed) return;
@@ -764,6 +791,11 @@ let wasListening = false; // as last reported by the app (the UI tests fake stat
 g.on("state", (s) => {
   const before = state;
   state = s;
+  // A practice call was just scored: show the scorecard.
+  if (before.practice?.scoring && !s.practice?.scoring && s.practice?.scorecard) {
+    panel = "scorecard";
+    backToSettings = false;
+  }
   // The key step finishes itself once a working key is saved.
   if (onboarding?.step === "key" && state.hasKey) onboarding.step = nextStep(1);
   // Start of a call block: Listen pressed, or Sales mode switched on.
@@ -1652,7 +1684,9 @@ $("modeMenu").addEventListener("click", (e) => {
   const v = e.target.closest("button")?.dataset.value;
   if (!v) return;
   setModeMenu(false);
-  if (v === "sales") {
+  if (v === "practice") {
+    openPanel("practice");
+  } else if (v === "sales") {
     if (state.style !== "sales") toggleInterview();
   } else if (v === "meeting") {
     if (state.style !== "brief" && state.style !== "natural") {
@@ -2014,3 +2048,185 @@ $("caption").addEventListener("click", (e) => {
   if (e.target.closest("#answerQBtn")) submit();
 });
 
+
+
+// ---------------------------------------------------------------------------
+// Practice calls (see practice.js in the main process).
+let practicePick = null; // persona chosen in the setup panel
+let practiceLines = []; // this practice call's lines, for the call view
+function renderPracticeSetup() {
+  practicePick ??= state.practicePersona || "skeptical";
+  $("personaCards").innerHTML = (state.personas || [])
+    .map((p) => `<button type="button" role="radio" class="persona-card" data-persona="${p.id}" aria-checked="${p.id === practicePick}"><span class="pc-title">${escapeHtml(p.label)}</span><span class="pc-desc">${escapeHtml(p.blurb)}</span><span class="pc-note">${escapeHtml(p.name)}</span></button>`)
+    .join("");
+  if (document.activeElement !== $("practiceCompany")) $("practiceCompany").value = state.practiceCompany || "";
+  $("practiceVoiceToggle").setAttribute("aria-checked", String(!!state.practiceVoice));
+  $("practiceBriefWarn").hidden = !!state.productBrief?.trim();
+  $("practiceClearNote").hidden = !(state.transcriptCount || answers.length);
+  $("practiceStart").disabled = !state.hasKey || !!state.practice?.scoring;
+}
+$("personaCards").addEventListener("click", (e) => {
+  const id = e.target.closest("[data-persona]")?.dataset.persona;
+  if (!id) return;
+  practicePick = id;
+  renderPracticeSetup();
+});
+$("practiceCompany").addEventListener("change", () => g.setSetting("practiceCompany", $("practiceCompany").value.trim()));
+$("practiceVoiceToggle").addEventListener("click", () => g.setSetting("practiceVoice", !state.practiceVoice));
+$("practiceCancel").addEventListener("click", () => closePanel());
+$("practicePanel").addEventListener("submit", (e) => {
+  e.preventDefault();
+  startPractice(practicePick || state.practicePersona);
+});
+function startPractice(persona) {
+  g.setSetting("practiceCompany", $("practiceCompany").value.trim());
+  answers = [];
+  page = -1;
+  pendingQuestion = null;
+  practiceLines = [];
+  $("transcript").querySelectorAll(".line").forEach((n) => n.remove());
+  panel = null;
+  backToSettings = false;
+  view = "answers";
+  render();
+  g.startPractice(persona);
+}
+
+function renderPracticeCall() {
+  const p = state.practice || {};
+  $("pcName").textContent = p.name ? `${p.name}` : "Practice call";
+  $("pcEnd").hidden = !p.active;
+  $("pcStatus").textContent = p.scoring
+    ? "Scoring your call…"
+    : p.thinking
+      ? `${p.name?.split(" ")[0] || "They"} is thinking…`
+      : p.speaking
+        ? `${p.name?.split(" ")[0] || "They"} is talking…`
+        : p.mic
+          ? "Your turn. Talk, or type below. ⌘↵ with nothing typed gives a hint."
+          : "Your turn. Type your line below. ⌘↵ with nothing typed gives a hint.";
+  const lines = practiceLines.slice(-6);
+  $("pcLog").innerHTML = lines.map((l) => `<li class="${l.role}">${line(l)}</li>`).join("");
+}
+g.on("transcript", (l) => {
+  if (!state.practice?.active) return;
+  practiceLines.push(l);
+  if (!$("practiceCall").hidden) renderPracticeCall();
+});
+$("pcEnd").addEventListener("click", () => g.endPractice());
+$("scDone").addEventListener("click", () => closePanel());
+$("scAgain").addEventListener("click", () => startPractice(state.practice?.lastPersona || state.practicePersona));
+
+function renderScorecard(card) {
+  const p = state.practice || {};
+  $("scScore").textContent = card.score;
+  $("scTitle").textContent = `Practice with ${p.name || "the prospect"}${card.booked ? ": meeting booked" : ""}`;
+  $("scMeta").textContent = card.talkRatio != null ? `You spoke about ${card.talkRatio}% of the words. Saved to Documents/Dialpal.` : "Saved to Documents/Dialpal.";
+  const parts = [["Opener", card.opener], ["Discovery", card.discovery], ["Objections", card.objections], ["Close", card.close]];
+  $("scParts").innerHTML = parts
+    .map(([label, part]) => `<li><span class="sc-label">${label}</span><span class="sc-dots" aria-label="${part.score ?? 0} of 5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= (part.score || 0) ? "on" : ""}"></i>`).join("")}</span><span class="sc-note">${escapeHtml(part.note || "")}</span></li>`)
+    .join("");
+  const list = (title, items) => (items.length ? `<h2>${title}</h2><ul class="sc-list">${items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : "");
+  $("scLists").innerHTML =
+    list("What worked", card.strengths) +
+    list("Work on", card.improve) +
+    (card.tryInstead ? `<h2>Try instead</h2><p class="sc-swap"><span class="sc-was">${escapeHtml(card.tryInstead.repSaid)}</span><span class="sc-better">${escapeHtml(card.tryInstead.better)}</span></p>` : "") +
+    (card.bestLine ? `<h2>Your best line</h2><p class="sc-best">${escapeHtml(card.bestLine)}</p>` : "");
+}
+
+// The mic, for practice calls only: 16 kHz mono int16 chunks to the main
+// process, which cuts them into phrases and transcribes them.
+let micStream = null;
+let micContext = null;
+g.on("mic-start", async () => {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    micContext = new AudioContext({ sampleRate: 16000 });
+    const source = micContext.createMediaStreamSource(micStream);
+    const node = micContext.createScriptProcessor(2048, 1, 1);
+    node.onaudioprocess = (e) => {
+      const f = e.inputBuffer.getChannelData(0);
+      const out = new Int16Array(f.length);
+      for (let i = 0; i < f.length; i++) out[i] = Math.max(-1, Math.min(1, f[i])) * 0x7fff;
+      g.micPcm(out.buffer);
+    };
+    source.connect(node);
+    node.connect(micContext.destination);
+  } catch (e) {
+    g.log(`mic failed: ${e?.message || e}`);
+    showNotice({ level: "warn", text: "Couldn't open your microphone, so type your lines. Check System Settings › Privacy & Security › Microphone." });
+  }
+});
+g.on("mic-stop", () => {
+  micStream?.getTracks().forEach((t) => t.stop());
+  micContext?.close().catch(() => {});
+  micStream = micContext = null;
+});
+
+// ---------------------------------------------------------------------------
+// Call stats and the call log.
+$("statsBtn").addEventListener("click", async () => {
+  openPanel("stats");
+  renderStats(await g.getStats());
+});
+$("statsDone").addEventListener("click", () => closePanel());
+$("statsLog").addEventListener("click", () => g.openCallLog());
+$("callLogBtn").addEventListener("click", () => g.openCallLog());
+function renderStats(st) {
+  const empty = !st.calls && !st.practice.sessions;
+  $("statsEmpty").hidden = !empty;
+  const tile = (value, label) => `<div class="stat-tile"><span class="stat-value">${value}</span><span class="stat-label">${label}</span></div>`;
+  $("statTiles").innerHTML = empty
+    ? ""
+    : tile(st.calls, st.calls === 1 ? "call logged" : "calls logged") + tile(st.booked, st.booked === 1 ? "meeting booked" : "meetings booked") + tile(st.bookedRate == null ? "–" : `${st.bookedRate}%`, "booked rate") + tile(st.lastWeek, "in the last 7 days");
+  const rows = st.objections;
+  $("objHead").hidden = $("objTable").hidden = !rows.length;
+  $("objTable").querySelector("tbody").innerHTML = rows
+    .map((o) => `<tr><td>${escapeHtml(o.label)}</td><td>${o.count}</td><td>${o.handledRate == null ? "–" : `${o.handledRate}%`}</td><td>${o.bookedRate == null ? "–" : `${o.bookedRate}%`}</td></tr>`)
+    .join("");
+  const max = Math.max(1, ...st.outcomes.map((o) => o.count));
+  $("outcomeHead").hidden = $("outcomeBars").hidden = !st.outcomes.length;
+  $("outcomeBars").innerHTML = st.outcomes
+    .map((o) => `<li><span class="ob-name">${escapeHtml(o.label)}</span><span class="ob-bar ${o.key}" style="--w:${Math.round((100 * o.count) / max)}%"></span><span class="ob-count">${o.count}</span></li>`)
+    .join("");
+  const pr = st.practice;
+  $("practiceHead").hidden = $("practiceStats").hidden = !pr.sessions;
+  $("practiceStats").textContent = pr.sessions
+    ? `${pr.sessions} practice ${pr.sessions === 1 ? "call" : "calls"}, average score ${pr.averageScore ?? "–"}/10${pr.lastScores.length > 1 ? `. Last ${pr.lastScores.length}: ${pr.lastScores.join(", ")}` : ""}. Practice isn't counted in the numbers above.`
+    : "";
+}
+
+// ---------------------------------------------------------------------------
+// HubSpot.
+$("hubspotBtn").addEventListener("click", () => {
+  $("hubspotToken").value = "";
+  $("hubspotStatus").textContent = "";
+  $("hubspotStatus").className = "model-status";
+  openPanel("hubspot");
+});
+function renderHubSpot() {
+  $("hubspotToken").placeholder = state.hubspotHint ? `Saved · ends ${state.hubspotHint}. Paste a new one to replace it` : "pat-…";
+  $("hubspotToggle").setAttribute("aria-checked", String(!!state.hubspotEnabled));
+  $("hubspotToggle").disabled = !state.hubspotHint;
+  $("hubspotToggleHint").textContent = state.hubspotHint ? "Real calls only, each time you save notes" : "Needs a saved token";
+  $("hubspotRemove").hidden = !state.hubspotHint;
+}
+$("hubspotToggle").addEventListener("click", () => state.hubspotHint && g.setSetting("hubspotEnabled", !state.hubspotEnabled));
+$("hubspotCancel").addEventListener("click", () => closePanel());
+$("hubspotRemove").addEventListener("click", async () => {
+  await g.setHubSpotToken("");
+  $("hubspotStatus").textContent = "Token removed.";
+});
+$("hubspotTest").addEventListener("click", async () => {
+  $("hubspotStatus").className = "model-status loading";
+  $("hubspotStatus").textContent = "Checking…";
+  const r = await g.testHubSpot($("hubspotToken").value.trim());
+  $("hubspotStatus").className = `model-status${r.error ? " error" : ""}`;
+  $("hubspotStatus").textContent = r.error ? r.error : "Connected. Dialpal can log calls.";
+});
+$("hubspotForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = $("hubspotToken").value.trim();
+  if (token) await g.setHubSpotToken(token);
+  closePanel();
+});

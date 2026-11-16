@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-const channels = ["state", "transcript", "answer-start", "answer-delta", "answer-end", "answer-skipped", "notice", "focus-input", "submit", "snap-submit"];
+const channels = ["state", "transcript", "answer-start", "answer-delta", "answer-end", "answer-skipped", "notice", "focus-input", "submit", "snap-submit", "mic-start", "mic-stop"];
 
 contextBridge.exposeInMainWorld("dialpal", {
   on(channel, fn) {
@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld("dialpal", {
   resetShortcuts: () => ipcRenderer.invoke("reset-shortcuts"),
   pauseShortcuts: (paused) => ipcRenderer.invoke("pause-shortcuts", paused),
   saveNotes: () => ipcRenderer.invoke("save-notes"),
+  getStats: () => ipcRenderer.invoke("get-stats"),
+  openCallLog: () => ipcRenderer.invoke("open-call-log"),
+  setHubSpotToken: (token) => ipcRenderer.invoke("set-hubspot-token", token),
+  testHubSpot: (token) => ipcRenderer.invoke("test-hubspot", token),
+  startPractice: (persona) => ipcRenderer.invoke("start-practice", persona),
+  endPractice: () => ipcRenderer.invoke("end-practice"),
+  practiceSay: (text) => ipcRenderer.invoke("practice-say", text),
+  micPcm: (chunk) => ipcRenderer.send("mic-pcm", chunk),
   openNotes: (file) => ipcRenderer.invoke("open-notes", file),
   addShot: () => ipcRenderer.invoke("add-shot"),
   snapAsk: (question) => ipcRenderer.invoke("snap-ask", question),

@@ -21,6 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // The fake model: streams a fixed interview-style answer and records requests.
 const ANSWER = "**I led our billing migration to Postgres.**\nKeys: billing migration · 40% fewer errors · staged rollout\n\nAt Acme Pay our invoices drifted out of sync, so I moved billing into Postgres transactions.\n\nWe ran both systems side by side and errors fell 40%.\n\n*Added: the side-by-side run. Check it fits.*";
 const requests = [];
+const hubspotRequests = [];
 // What the fake GitHub says the latest release is (Settings > About).
 let latestRelease = { tag_name: "v1.0.0", assets: [] };
 let server;
@@ -70,8 +71,34 @@ before(async () => {
         res.writeHead(200, { "content-type": "application/json" });
         return res.end(JSON.stringify(latestRelease));
       }
+      // The fake HubSpot (DIALPAL_HUBSPOT_URL).
+      if (req.url.startsWith("/hubspot/")) {
+        hubspotRequests.push({ method: req.method, url: req.url, auth: req.headers.authorization, body: body ? JSON.parse(body) : null });
+        res.writeHead(req.url.includes("/search") ? 200 : 201, { "content-type": "application/json" });
+        return res.end(JSON.stringify(req.url.includes("/search") ? { results: [{ id: "501" }] } : { id: "9001", results: [] }));
+      }
       const request = JSON.parse(body || "{}");
       requests.push(request);
+      // Non-streamed requests: the practice prospect, the scorecard, the call
+      // record and the notes summary, told apart by their system prompts.
+      if (request.messages && !request.stream) {
+        const system = request.messages[0]?.content ?? "";
+        const user = JSON.stringify(request.messages.at(-1)?.content ?? "");
+        let content = null;
+        if (system.includes("Role-play for sales practice")) {
+          content = user.includes("phone rings") ? "Dana: Hello, Dana speaking." : user.includes("rep: Bye") ? "Okay. Bye. [hangs up]" : "Look, we already use Bill.com for that. *sighs*";
+        } else if (system.includes("Grade a practice cold call")) {
+          content = JSON.stringify({ score: 7, opener: { score: 4, note: "Clear reason for the call." }, discovery: { score: 3, note: "One good question." }, objections: { score: 3, note: "Acknowledged, then pitched too fast." }, close: { score: 2, note: "Never asked for the meeting." }, booked: false, talk_ratio: 58, strengths: ["Named the reason for calling early."], improve: ["Ask for a specific 20-minute slot."], best_line: "Hi Dana, it's Sam from Ledgerly.", try_instead: { rep_said: "Can I send you something?", better: "Worth 20 minutes Tuesday to see how Brightline did it?" } });
+        } else if (system.includes("write one JSON object")) {
+          content = JSON.stringify({ company: "Brightline", contact: "Dana", email: "dana@brightline.com", outcome: "booked", meeting: "Tuesday 2pm", objections: [{ type: "using_competitor", quote: "We already use Bill.com", handled: true }], next_step: "Send the invite", summary: "Booked a demo after the Bill.com objection." });
+        } else if (system.includes("Meeting notes in Markdown")) {
+          content = "## Summary\nA test call.";
+        }
+        if (content != null) {
+          res.writeHead(200, { "content-type": "application/json" });
+          return res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 10 } }));
+        }
+      }
       // Model listing for the provider form.
       if (req.method === "GET" && req.url.endsWith("/models")) {
         res.writeHead(200, { "content-type": "application/json" });
@@ -128,7 +155,7 @@ before(async () => {
   });
   const port = 9400 + Math.floor(Math.random() * 500);
   app = spawn(electronPath, [root, `--remote-debugging-port=${port}`], {
-    env: { ...process.env, DIALPAL_TEST_DIR: dir, DIALPAL_MODELS_URL: "http://127.0.0.1:9", DIALPAL_TEST_MODEL_FILES: JSON.stringify(files), DIALPAL_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs"), DIALPAL_TEST_VERSION: "1.0.0", DIALPAL_UPDATE_URL: `${modelUrl.replace(/\/v1$/, "")}/releases/latest` },
+    env: { ...process.env, DIALPAL_HUBSPOT_URL: `${modelUrl.replace(/\/v1$/, "")}/hubspot`, DIALPAL_TEST_DIR: dir, DIALPAL_MODELS_URL: "http://127.0.0.1:9", DIALPAL_TEST_MODEL_FILES: JSON.stringify(files), DIALPAL_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs"), DIALPAL_TEST_VERSION: "1.0.0", DIALPAL_UPDATE_URL: `${modelUrl.replace(/\/v1$/, "")}/releases/latest` },
     stdio: "ignore",
   });
   let page;
@@ -1155,6 +1182,126 @@ test("the no-sound warning offers settings and a reopen", { skip }, async () => 
 });
 
 // Last: it deletes the test app's data and quits it.
+// Practice calls, the call log, stats and HubSpot.
+const docs = () => path.join(dir, "documents", "Dialpal");
+const callLog = () => readFileSync(path.join(docs(), "calls.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+
+test("practice call: the prospect picks up, a typed line gets a reply, a hint is a Sales reply, End call scores and saves", { skip }, async () => {
+  await run(`await g.setSetting("productBrief", "Ledgerly: AP automation. Proof: Brightline cut processing time 62%."); await g.setSetting("style", "brief");`);
+  await until(`state.style === "brief"`);
+  await click("#modeBtn");
+  await click('#modeMenu [data-value="practice"]');
+  assert.ok(await shown("practicePanel"));
+  assert.equal(await run(`return document.querySelectorAll("#personaCards .persona-card").length;`), 4);
+  assert.ok(!(await shown("practiceBriefWarn")), "a brief is saved");
+  await click('#personaCards [data-persona="busy"]');
+  assert.equal(await run(`return document.querySelector('#personaCards [aria-checked="true"]').dataset.persona;`), "busy");
+  await run(`document.getElementById("practiceStart").click();`);
+  await until(`state.practice.active && document.getElementById("pcLog").textContent.includes("Hello, Dana speaking.")`);
+  assert.ok(await shown("practiceCall"));
+  assert.ok(await run(`return document.body.classList.contains("practicing");`));
+  assert.equal(await run(`return getComputedStyle(document.getElementById("listenBtn")).display;`), "none", "Listen is off during practice");
+  assert.equal(await run(`return document.getElementById("pcName").textContent;`), "Dana Reyes");
+  assert.equal(await run(`return document.getElementById("askBtn").textContent;`), "Hint");
+  // A typed line is the rep's line; the prospect answers it, cleaned to speech.
+  await run(`document.getElementById("question").value = "Hi Dana, it's Sam from Ledgerly."; document.getElementById("question").dispatchEvent(new Event("input"));`);
+  assert.equal(await run(`return document.getElementById("askBtn").textContent;`), "Say");
+  await run(`document.getElementById("askForm").requestSubmit();`);
+  await until(`document.getElementById("pcLog").textContent.includes("we already use Bill.com for that.")`);
+  assert.ok(!(await run(`return document.getElementById("pcLog").textContent.includes("sighs");`)));
+  const prospectAsk = requests.filter((r) => r.messages?.[0]?.content?.includes("Role-play")).at(-1);
+  assert.match(JSON.stringify(prospectAsk.messages.at(-1).content), /rep: Hi Dana, it's Sam from Ledgerly\./);
+  // ⌘↵ with nothing typed: a hint, written in the Sales style with no screenshot.
+  const count = requests.length;
+  await run(`submit();`);
+  await until(`answers.length === 1 && answers[0].status === "done"`);
+  const hint = requests.slice(count).find((r) => r.stream);
+  assert.match(hint.messages[0].content, /Answer style: sales/);
+  assert.ok(!hint.messages[1].content.some((p) => p.type === "image_url"), "no screenshot in practice");
+  // End call: scored, the scorecard shows, the call is saved as practice.
+  await click("#pcEnd");
+  await until(`panel === "scorecard"`, 6000);
+  assert.equal(await run(`return document.getElementById("scScore").textContent;`), "7");
+  assert.equal(await run(`return document.querySelectorAll("#scParts li").length;`), 4);
+  assert.equal(await run(`return document.querySelectorAll("#scParts li:last-child .sc-dots i.on").length;`), 2);
+  assert.match(await run(`return document.getElementById("scLists").textContent;`), /Worth 20 minutes Tuesday/);
+  await until(`!state.savingNotes`);
+  const last = callLog().at(-1);
+  assert.equal(last.practice, true);
+  assert.equal(last.score, 7);
+  assert.equal(last.persona, "busy");
+  const notes = readFileSync(last.notesFile, "utf8");
+  assert.match(notes, /^# Practice call with Dana Reyes/);
+  assert.match(notes, /## Scorecard: 7\/10/);
+  assert.match(notes, /\*\*Dana Reyes:\*\* Hello, Dana speaking\./);
+  assert.equal(hubspotRequests.length, 0, "practice never reaches the CRM");
+  await click("#scDone");
+  assert.ok(!(await shown("scorecardPanel")));
+  assert.ok(!(await run(`return document.body.classList.contains("practicing");`)));
+});
+
+test("practice: the prospect hanging up ends the call and scores it", { skip }, async () => {
+  await run(`startPractice("skeptical");`);
+  await until(`state.practice.active && state.transcriptCount === 1`);
+  await run(`await g.practiceSay("Bye for now.");`);
+  await until(`panel === "scorecard"`, 6000);
+  assert.equal(await run(`return state.practice.active;`), false);
+  await until(`!state.savingNotes`);
+  await click("#scDone");
+});
+
+test("a saved real call is logged, sent to HubSpot when on, and counted in stats", { skip }, async () => {
+  await run(`await g.clear();`);
+  assert.equal(await run(`return state.hubspotHint;`), null);
+  // HubSpot form: the switch waits for a token; Save stores it and turns it on.
+  await click("#menuBtn");
+  await click('#settingsTabs [data-tab="session"]');
+  await click("#hubspotBtn");
+  assert.ok(await shown("hubspotForm"));
+  assert.ok(await run(`return document.getElementById("hubspotToggle").disabled;`));
+  await run(`document.getElementById("hubspotToken").value = "pat-na1-test";`);
+  await click("#hubspotTest");
+  await until(`document.getElementById("hubspotStatus").textContent.startsWith("Connected")`);
+  assert.equal(hubspotRequests.at(-1).auth, "Bearer pat-na1-test");
+  await run(`document.getElementById("hubspotForm").requestSubmit();`);
+  await until(`state.hubspotEnabled && state.hubspotHint === "test"`);
+  assert.ok(await shown("menu"), "back to Settings");
+  assert.match(await run(`return document.getElementById("hubspotMeta").textContent;`), /On · token ending test/);
+  await run(`setMenu(false);`);
+  // A real call: two heard lines, then Save notes.
+  await run(`await g.testHeard({ text: "Hi, this is Dana.", keep: true }); await g.testHeard({ text: "We already use Bill.com.", keep: true });`);
+  await until(`state.transcriptCount === 2`);
+  const before = hubspotRequests.length;
+  await run(`await g.saveNotes();`);
+  const last = callLog().at(-1);
+  assert.equal(last.practice, undefined);
+  assert.equal(last.outcome, "booked");
+  assert.equal(last.email, "dana@brightline.com");
+  const csv = readFileSync(path.join(docs(), "calls.csv"), "utf8");
+  assert.match(csv, /Brightline,Dana,dana@brightline\.com,Meeting booked,Tuesday 2pm,Already use something/);
+  const sent = hubspotRequests.slice(before);
+  assert.deepEqual(sent.map((r) => r.url), ["/hubspot/crm/v3/objects/contacts/search", "/hubspot/crm/v3/objects/calls"]);
+  assert.equal(sent[1].body.associations[0].to.id, "501");
+  assert.match(sent[1].body.properties.hs_call_body, /Outcome: Meeting booked \(Tuesday 2pm\)/);
+  // Stats: one real call (booked), practice counted apart.
+  await click("#menuBtn");
+  await click('#settingsTabs [data-tab="session"]');
+  await click("#statsBtn");
+  await until(`document.getElementById("statTiles").children.length === 4`);
+  assert.deepEqual(await run(`return [...document.querySelectorAll("#statTiles .stat-value")].map((n) => n.textContent);`), ["1", "1", "100%", "1"]);
+  assert.match(await run(`return document.querySelector("#objTable tbody").textContent;`), /Already use something1100%100%/);
+  assert.match(await run(`return document.getElementById("practiceStats").textContent;`), /^2 practice calls, average score 7\/10/);
+  await click("#statsDone");
+  assert.ok(await shown("menu"));
+  // Turning it off: the next saved call stays local.
+  await run(`await g.setSetting("hubspotEnabled", false); setMenu(false);`);
+  const n = hubspotRequests.length;
+  await run(`await g.saveNotes();`);
+  assert.equal(hubspotRequests.length, n);
+  await run(`await g.clear();`);
+});
+
+
 test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {
   const { existsSync } = await import("node:fs");
   assert.ok(existsSync(path.join(dir, "config.json")));

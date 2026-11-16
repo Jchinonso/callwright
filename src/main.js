@@ -5,7 +5,9 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Asr } from "./asr.js";
-import { Listener } from "./audio.js";
+import { Listener, MicListener } from "./audio.js";
+import { appendRecord, checkHubSpot, computeStats, extractRecord, fallbackRecord, pushToHubSpot, readRecords } from "./calls.js";
+import { cleanProspectLine, PERSONAS, prospectSystem, prospectUser, scorecardMarkdown, scorePractice } from "./practice.js";
 import { USER_BOOST } from "./hotwords.js";
 import { normalizeBaseUrl } from "./urls.js";
 import { caveman, keepsFacts } from "./compress.js";
@@ -26,6 +28,8 @@ const TEST_DIR = process.env.DIALPAL_TEST_DIR;
 if (TEST_DIR) {
   app.setPath("userData", TEST_DIR);
   app.setAppLogsPath(path.join(TEST_DIR, "logs"));
+  // Notes and the call log too, so tests never write to the real Documents.
+  app.setPath("documents", path.join(TEST_DIR, "documents"));
   // Small stand-ins for the model's files ([{ name, size, sha256 }]), served
   // by the test from DIALPAL_MODELS_URL, so downloads run end to end. The
   // engine is then a stand-in too (DIALPAL_TEST_ASR).
@@ -72,10 +76,15 @@ const defaults = { provider: "anthropic", model: DEFAULT_ANTHROPIC_MODEL, openai
   compactAnswers: false,
   // Sales mode, while listening: reply once the prospect finishes their turn.
   autoAnswer: true,
+  // Call log: also log each saved real call to HubSpot (token in the keychain).
+  hubspotEnabled: false,
+  // Practice calls: who picks up, their company (optional), and whether
+  // their lines are spoken aloud.
+  practicePersona: "skeptical", practiceCompany: "", practiceVoice: true,
   // Last model list fetched per provider and base URL, so the dropdown can
   // show something before the network answers.
   modelLists: {},
-  apiKey: null, openaiKey: null };
+  apiKey: null, openaiKey: null, hubspotToken: null };
 // Saved settings are upgraded in order, each step once: a file at version n
 // runs CONFIG_MIGRATIONS[n] onward. Only settings changed from their default
 // are saved, so a new default reaches everyone who kept the old one; steps
@@ -393,7 +402,7 @@ async function refreshModelList(prov = config.provider, baseUrl = config.openaiB
 
 // API keys live in the login keychain via /usr/bin/security, so they survive
 // rebuilds that change the app's code signature. One entry per provider.
-const KEYCHAIN = { service: "com.dialpal.overlay.api-key", accounts: { anthropic: "dialpal", openai: "openai" } };
+const KEYCHAIN = { service: "com.dialpal.overlay.api-key", accounts: { anthropic: "dialpal", openai: "openai", hubspot: "hubspot" } };
 
 function readKeychainKey(account = KEYCHAIN.accounts.anthropic) {
   if (TEST_DIR) return null;
@@ -440,7 +449,7 @@ function loadConfig() {
   for (const [k, v] of Object.entries(settings)) {
     if (k in defaults && defaults[k] !== null && typeof v !== typeof defaults[k]) delete settings[k];
   }
-  config = { ...defaults, ...settings, apiKey: readKeychainKey(), openaiKey: readKeychainKey(KEYCHAIN.accounts.openai) };
+  config = { ...defaults, ...settings, apiKey: readKeychainKey(), openaiKey: readKeychainKey(KEYCHAIN.accounts.openai), hubspotToken: readKeychainKey(KEYCHAIN.accounts.hubspot) };
   if (!(config.provider in PROVIDERS)) config.provider = "anthropic";
   if (!["system", "light", "dark"].includes(config.theme)) config.theme = "system";
   nativeTheme.themeSource = config.theme;
@@ -465,7 +474,7 @@ function loadConfig() {
 // Written to a temp file and renamed, so a crash mid-write can't corrupt it.
 function saveConfig() {
   if (wiping) return;
-  const { apiKey, openaiKey, ...rest } = config;
+  const { apiKey, openaiKey, hubspotToken, ...rest } = config;
   // Settings still at their default aren't written (see CONFIG_MIGRATIONS).
   const changed = Object.fromEntries(Object.entries(rest).filter(([k, v]) => !(k in defaults) || JSON.stringify(v) !== JSON.stringify(defaults[k])));
   try {
@@ -545,6 +554,13 @@ function state() {
     spend,
     shortcuts: shortcuts(),
     transcriptCount: transcript.length,
+    practice: { ...practice },
+    personas: Object.entries(PERSONAS).map(([id, p]) => ({ id, label: p.label, blurb: p.blurb, name: p.name })),
+    practicePersona: config.practicePersona,
+    practiceCompany: config.practiceCompany,
+    practiceVoice: config.practiceVoice,
+    hubspotEnabled: config.hubspotEnabled,
+    hubspotHint: config.hubspotToken ? config.hubspotToken.slice(-4) : null,
   };
 }
 
@@ -826,7 +842,7 @@ async function runAsk(question, { heard = false, heardAt = null, hard = false, d
   // Screenshots the user attached win; otherwise grab the screen now if enabled.
   let screenshots = shots.map((s) => s.data);
   shots = [];
-  if (!screenshots.length && config.autoScreen && !heard) {
+  if (!screenshots.length && config.autoScreen && !heard && !practice.active) {
     try {
       screenshots = [(await captureScreen()).data];
     } catch (e) {
@@ -888,7 +904,7 @@ async function runAsk(question, { heard = false, heardAt = null, hard = false, d
     screenshots,
     effort,
     think,
-    style: styleOverride ?? config.style,
+    style: styleOverride ?? (practice.active ? "sales" : config.style),
     customInstructions: sentInstructions(),
     resume: config.resume,
     productBrief: config.productBrief,
@@ -1051,7 +1067,17 @@ function notesFileName(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}.${pad(date.getMinutes())}.md`;
 }
 
-async function saveNotes() {
+const callMinutes = () => {
+  if (!transcript.length) return null;
+  const ms = transcript.at(-1).at - (transcript[0].start ?? transcript[0].at);
+  return Math.max(0, Math.round(ms / 6000) / 10);
+};
+
+// Saves the session: the notes file, plus one structured record in the call
+// log (calls.jsonl and calls.csv in the same folder), sent on to HubSpot when
+// that's on. A practice call adds its scorecard and is marked as practice, so
+// it never counts in the real-call stats or reaches the CRM.
+async function saveNotes({ scorecard = null, practiceCall = null } = {}) {
   if (savingNotes) return;
   if (!transcript.length && !answers.length) {
     return send("notice", { level: "warn", text: "Nothing to save yet. Listen to a call or ask something first." });
@@ -1059,30 +1085,66 @@ async function saveNotes() {
   savingNotes = true;
   broadcastState();
   const now = new Date();
-  const parts = [`# Notes, ${now.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}`];
+  const when = now.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" });
+  const them = practiceCall ? PERSONAS[practiceCall.persona]?.name || "Prospect" : "Them";
+  const parts = [practiceCall ? `# Practice call with ${them}, ${when}` : `# Notes, ${when}`];
+  if (scorecard) parts.push(scorecardMarkdown(scorecard));
+  let record = null;
   try {
     if (canAsk()) {
       send("notice", { level: "ok", text: "Writing your notes…" });
       const llm = provider();
       const model = currentModel();
-      try {
-        parts.push(await summarizeSession(llm, model, { transcript, answers }, addUsage));
-      } catch (e) {
-        log("summary failed:", e);
-        parts.push(`_Summary unavailable: ${describeError(llm, e, model)}_`);
+      const [summary, extracted] = await Promise.allSettled([
+        summarizeSession(llm, model, { transcript, answers }, addUsage),
+        extractRecord(llm, model, { transcript, answers }, addUsage),
+      ]);
+      if (summary.status === "fulfilled") parts.push(summary.value);
+      else {
+        log("summary failed:", summary.reason);
+        parts.push(`_Summary unavailable: ${describeError(llm, summary.reason, model)}_`);
       }
+      if (extracted.status === "fulfilled") record = extracted.value;
+      else log("call record failed:", extracted.reason);
     }
     if (transcript.length) {
-      parts.push("## Transcript", transcript.map((l) => `**${l.role === "me" ? "You" : "Them"}:** ${l.text}`).join("\n\n"));
+      parts.push("## Transcript", transcript.map((l) => `**${l.role === "me" ? "You" : them}:** ${l.text}`).join("\n\n"));
     }
     if (answers.length) {
-      parts.push("## Questions and answers", answers.map((a) => `### ${a.question || a.context || "Help with what's on screen"}\n\n${splitKeys(a.answer).text}${a.stopped ? "\n\n_(Stopped before the end.)_" : ""}${a.said ? `\n\n_You said instead:_ ${a.said}` : ""}`).join("\n\n"));
+      parts.push(practiceCall ? "## Hints" : "## Questions and answers", answers.map((a) => `### ${a.question || a.context || "Help with what's on screen"}\n\n${splitKeys(a.answer).text}${a.stopped ? "\n\n_(Stopped before the end.)_" : ""}${a.said ? `\n\n_You said instead:_ ${a.said}` : ""}`).join("\n\n"));
     }
     mkdirSync(notesDir(), { recursive: true });
-    let file = path.join(notesDir(), notesFileName(now));
-    for (let n = 2; existsSync(file); n++) file = path.join(notesDir(), notesFileName(now).replace(/\.md$/, ` (${n}).md`));
+    const base = practiceCall ? notesFileName(now).replace(/\.md$/, " practice.md") : notesFileName(now);
+    let file = path.join(notesDir(), base);
+    for (let n = 2; existsSync(file); n++) file = path.join(notesDir(), base.replace(/\.md$/, ` (${n}).md`));
     await writeFile(file, parts.join("\n\n") + "\n");
-    send("notice", { level: "ok", text: `Notes saved to Documents/Dialpal.`, action: { type: "open", path: file } });
+
+    record ??= fallbackRecord(transcript);
+    Object.assign(record, { date: now.toISOString(), durationMin: callMinutes(), notesFile: file });
+    if (practiceCall) {
+      record.practice = true;
+      record.persona = practiceCall.persona;
+      record.score = scorecard?.score ?? null;
+      if (scorecard?.booked) record.outcome = "booked";
+    }
+    try {
+      await appendRecord(notesDir(), record);
+    } catch (e) {
+      log("call log failed:", e);
+    }
+    let crm = "";
+    if (!practiceCall && config.hubspotEnabled && config.hubspotToken) {
+      try {
+        const { contactId } = await pushToHubSpot(record, config.hubspotToken, hubspotOptions());
+        crm = contactId ? " Logged to HubSpot on the contact." : " Logged to HubSpot.";
+        log(`hubspot logged contact=${!!contactId}`);
+      } catch (e) {
+        log("hubspot failed:", e);
+        crm = ` HubSpot didn't take it: ${e.message}.`;
+      }
+    }
+    send("notice", { level: crm.includes("didn't") ? "warn" : "ok", text: `${practiceCall ? "Practice saved" : "Notes saved"} to Documents/Dialpal.${crm}`, action: { type: "open", path: file } });
+    return record;
   } catch (e) {
     log("save notes failed:", e);
     send("notice", { level: "error", text: `Couldn't save notes: ${e.message}` });
@@ -1090,6 +1152,173 @@ async function saveNotes() {
     savingNotes = false;
     broadcastState();
   }
+}
+
+// HubSpot's address: the real API, or the UI tests' fake server.
+const hubspotOptions = () => (TEST_DIR && process.env.DIALPAL_HUBSPOT_URL ? { baseUrl: process.env.DIALPAL_HUBSPOT_URL } : {});
+
+// ---------------------------------------------------------------------------
+// Practice calls. The model plays a prospect (see practice.js); the rep talks
+// into the microphone (MicListener) or types. The prospect's lines go into
+// the transcript as "them" and the rep's as "me", so hints (⌘↵ with nothing
+// typed) work exactly as on a real call. Listening to the Mac's audio is off
+// for the whole practice call.
+let practice = { active: false, persona: null, name: null, startedAt: null, thinking: false, speaking: false, scoring: false, mic: false, scorecard: null, lastPersona: null };
+let mic = null;
+let sayProc = null;
+let practiceTimer = null;
+let practiceRun = 0; // bumps on every start and end, so a late reply from an old call is dropped
+
+function micListener() {
+  if (!mic) {
+    mic = new MicListener({ asr, hotwords: speechHotwords() });
+    mic.on("line", (line) => heard(line, keepLine));
+    mic.on("detail", (text) => log(String(text).replace(/\s+/g, " ").slice(0, 2000)));
+    mic.on("error", (text) => send("notice", { level: "error", text }));
+  }
+  mic.setAsr(asr);
+  return mic;
+}
+
+// After the rep stops talking (or sends a typed line), the prospect answers.
+// While the mic still hears them, it waits.
+function schedulePracticeTurn(delay = 1200) {
+  clearTimeout(practiceTimer);
+  practiceTimer = setTimeout(() => {
+    if (!practice.active) return;
+    if (mic?.hearing()) return schedulePracticeTurn(400);
+    prospectTurn();
+  }, delay);
+}
+
+async function prospectTurn({ opening = false } = {}) {
+  if (!practice.active || practice.thinking) return;
+  const run = practiceRun;
+  practice.thinking = true;
+  broadcastState();
+  const llm = provider();
+  const model = currentModel();
+  try {
+    const result = await llm.complete({
+      model,
+      system: prospectSystem({ persona: practice.persona, productBrief: config.productBrief, company: config.practiceCompany }),
+      user: prospectUser(transcript, { opening }),
+      maxTokens: 400,
+      effort: "low",
+    });
+    addUsage(result.usage, model);
+    if (run !== practiceRun) return;
+    const { text, hungUp } = cleanProspectLine(result.text);
+    practice.thinking = false;
+    if (text) {
+      const now = Date.now();
+      keepLine({ role: "them", text, at: now, start: now });
+      await speak(text);
+    }
+    if (run !== practiceRun) return;
+    if (hungUp) {
+      send("notice", { level: "warn", text: `${practice.name} hung up.` });
+      await endPractice();
+    } else if (transcript.at(-1)?.role === "me") schedulePracticeTurn(300); // the rep spoke over them
+  } catch (e) {
+    log("practice turn failed:", e);
+    if (run === practiceRun) send("notice", { level: "error", text: `The practice prospect couldn't answer: ${describeError(llm, e, model)}` });
+  } finally {
+    if (run === practiceRun) {
+      practice.thinking = false;
+      broadcastState();
+    }
+  }
+}
+
+// Speaks a prospect line with macOS's own voices. The mic is muted while it
+// plays so it doesn't transcribe the prospect as the rep. A voice that isn't
+// installed falls back to the default one.
+function speak(text) {
+  if (!config.practiceVoice || TEST_DIR) return Promise.resolve();
+  const voice = PERSONAS[practice.persona]?.voice;
+  return new Promise((resolve) => {
+    mic?.setMuted(true);
+    practice.speaking = true;
+    broadcastState();
+    const run = (args, retry) => {
+      const proc = spawn("/usr/bin/say", args, { stdio: "ignore" });
+      sayProc = proc;
+      proc.on("error", () => finish());
+      proc.on("exit", (code) => (code && retry && sayProc === proc ? run(["-r", "185", text], false) : finish()));
+    };
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      sayProc = null;
+      practice.speaking = false;
+      broadcastState();
+      setTimeout(() => mic?.setMuted(false), 250); // the room's echo dies down
+      resolve();
+    };
+    run(voice ? ["-v", voice, "-r", "185", text] : ["-r", "185", text], !!voice);
+  });
+}
+
+function stopSpeaking() {
+  const proc = sayProc;
+  sayProc = null;
+  proc?.kill();
+}
+
+async function startPractice(persona) {
+  if (practice.active || practice.scoring) return;
+  if (!canAsk()) return send("notice", { level: "error", text: "Add your AI key first: the practice prospect needs it." });
+  if (listening) await toggleListening();
+  current?.abort();
+  transcript = [];
+  answers = [];
+  shots = [];
+  const id = Object.hasOwn(PERSONAS, persona) ? persona : "skeptical";
+  config.practicePersona = id;
+  saveConfig();
+  practiceRun++;
+  practice = { active: true, persona: id, name: PERSONAS[id].name, startedAt: Date.now(), thinking: false, speaking: false, scoring: false, mic: false, scorecard: null, lastPersona: id };
+  broadcastState();
+  // The mic: asked once by macOS. Without it the rep types their lines.
+  let micOk = false;
+  if (asr) {
+    const allowed = TEST_DIR ? true : await systemPreferences.askForMediaAccess("microphone").catch(() => false);
+    if (allowed && micListener().start()) micOk = true;
+  }
+  practice.mic = micOk && !TEST_DIR;
+  if (practice.mic) send("mic-start");
+  else if (!TEST_DIR) send("notice", { level: "warn", text: asr ? "Microphone access is off, so type your lines. Allow Dialpal in System Settings › Privacy & Security › Microphone to talk instead." : "The speech model isn't ready, so type your lines for now." });
+  log(`practice start persona=${id} mic=${practice.mic}`);
+  broadcastState();
+  await prospectTurn({ opening: true });
+}
+
+async function endPractice({ score = true } = {}) {
+  if (!practice.active) return;
+  practiceRun++;
+  clearTimeout(practiceTimer);
+  stopSpeaking();
+  mic?.stop();
+  send("mic-stop");
+  const ended = { ...practice };
+  practice = { ...practice, active: false, thinking: false, speaking: false, mic: false, scoring: score };
+  broadcastState();
+  const repSpoke = transcript.some((l) => l.role === "me");
+  let card = null;
+  if (score && repSpoke && canAsk()) {
+    try {
+      card = await scorePractice(provider(), currentModel(), { transcript, productBrief: config.productBrief }, addUsage);
+    } catch (e) {
+      log("practice score failed:", e);
+      send("notice", { level: "warn", text: `Couldn't score this call: ${describeError(provider(), e, currentModel())}` });
+    }
+  }
+  practice = { ...practice, scoring: false, scorecard: card };
+  log(`practice end persona=${ended.persona} score=${card?.score ?? "none"} turns=${transcript.length}`);
+  broadcastState();
+  if (score && repSpoke) await saveNotes({ scorecard: card, practiceCall: ended });
 }
 
 async function toggleListening() {
@@ -1136,6 +1365,16 @@ function heard(line, keep) {
   keep(line);
 }
 
+// Kept whole for notes, in spoken order; only the tail goes to the model.
+// In a practice call, the rep finishing a line is the prospect's cue.
+function keepLine(line) {
+  let i = transcript.length;
+  while (i > 0 && transcript[i - 1].at > line.at) i--;
+  transcript.splice(i, 0, line);
+  send("transcript", line);
+  if (practice.active && line.role === "me") schedulePracticeTurn();
+}
+
 function createListener() {
   const l = new Listener({
     asr, // null until the model is in (setSpeechReady)
@@ -1143,14 +1382,7 @@ function createListener() {
     audioteePath: unpacked(path.join(here, "..", "node_modules", "audiotee", "bin", "audiotee")),
   });
   l.on("detail", (text) => log(String(text).replace(/\s+/g, " ").slice(0, 2000)));
-  const keep = (line) => {
-    // Kept whole for notes, in spoken order; only the tail goes to the model.
-    let i = transcript.length;
-    while (i > 0 && transcript[i - 1].at > line.at) i--;
-    transcript.splice(i, 0, line);
-    send("transcript", line);
-  };
-  l.on("line", (line) => heard(line, keep));
+  l.on("line", (line) => heard(line, keepLine));
   l.on("error", (text) => {
     log(`listen error: ${text}`);
     send("notice", { level: "error", text });
@@ -1304,9 +1536,10 @@ ipcMain.handle("toggle-listening", () => toggleListening());
 // Test mode only: a segment as if Listener had just transcribed it with the
 // model in use (there's no audio in a test).
 if (TEST_DIR) {
-  ipcMain.handle("test-heard", (_e, { durMs = 7500, transcribeMs = 1000, text = "test" } = {}) => {
+  // keep: the line goes into the transcript too, as a heard line would.
+  ipcMain.handle("test-heard", (_e, { durMs = 7500, transcribeMs = 1000, text = "test", role = "them", keep = false } = {}) => {
     const at = Date.now();
-    heard({ role: "them", text, at, start: at - durMs, transcribeMs, decodeMs: transcribeMs, transcribedAt: at, queued: 0, via: "parakeet" }, () => {});
+    heard({ role, text, at, start: at - durMs, transcribeMs, decodeMs: transcribeMs, transcribedAt: at, queued: 0, via: "parakeet" }, keep ? keepLine : () => {});
   });
 }
 // Setup's Try again, or retrying after the automatic attempts gave up.
@@ -1405,6 +1638,10 @@ ipcMain.handle("set-setting", (_e, name, value) => {
   else if (name === "autoScreen") config.autoScreen = !!value;
   else if (name === "compactAnswers") config.compactAnswers = !!value;
   else if (name === "autoAnswer") config.autoAnswer = !!value;
+  else if (name === "hubspotEnabled") config.hubspotEnabled = !!value && !!config.hubspotToken;
+  else if (name === "practiceVoice") config.practiceVoice = !!value;
+  else if (name === "practiceCompany") config.practiceCompany = String(value ?? "").trim().slice(0, 120);
+  else if (name === "practicePersona" && Object.hasOwn(PERSONAS, value)) config.practicePersona = value;
   else if (name === "openAtLogin") {
     config.openAtLogin = !!value;
     app.setLoginItemSettings({ openAtLogin: config.openAtLogin });
@@ -1445,6 +1682,48 @@ ipcMain.handle("clipboard-read", () => clipboard.readText());
 ipcMain.handle("clipboard-write", (_e, text) => clipboard.writeText(String(text ?? "")));
 ipcMain.handle("add-shot", () => addShot());
 ipcMain.handle("save-notes", () => saveNotes());
+ipcMain.handle("get-stats", async () => computeStats(await readRecords(notesDir())));
+ipcMain.handle("open-call-log", () => {
+  const csv = path.join(notesDir(), "calls.csv");
+  if (!existsSync(csv)) return send("notice", { level: "warn", text: "No calls logged yet. Save notes after a call to start the log." });
+  shell.openPath(csv);
+});
+ipcMain.handle("set-hubspot-token", (_e, token) => {
+  const value = String(token ?? "").trim() || null;
+  try {
+    writeKeychainKey(value, KEYCHAIN.accounts.hubspot);
+    config.hubspotToken = value;
+    if (!value) config.hubspotEnabled = false;
+    else config.hubspotEnabled = true;
+    saveConfig();
+  } catch (e) {
+    send("notice", { level: "error", text: `Couldn't save the token: ${e.message}.` });
+  }
+  broadcastState();
+});
+ipcMain.handle("test-hubspot", async (_e, token) => {
+  const value = String(token ?? "").trim() || config.hubspotToken;
+  if (!value) return { error: "Paste a HubSpot private app token first." };
+  try {
+    await checkHubSpot(value, hubspotOptions());
+    return { ok: true };
+  } catch (e) {
+    return { error: `${e.message}.` };
+  }
+});
+ipcMain.handle("start-practice", (_e, persona) => startPractice(persona));
+ipcMain.handle("end-practice", () => endPractice());
+ipcMain.handle("practice-say", (_e, text) => {
+  const t = String(text ?? "").replace(/\s+/g, " ").trim().slice(0, 1000);
+  if (!practice.active || !t) return;
+  stopSpeaking(); // talking over the prospect cuts them off, as on a real call
+  const now = Date.now();
+  keepLine({ role: "me", text: t, at: now, start: now });
+  schedulePracticeTurn(300);
+});
+ipcMain.on("mic-pcm", (_e, chunk) => {
+  if (practice.active && chunk) mic?.push(Buffer.from(chunk));
+});
 // Only opens files Dialpal itself wrote.
 ipcMain.handle("open-notes", (_e, file) => {
   const resolved = path.resolve(String(file));
@@ -1456,7 +1735,9 @@ ipcMain.handle("remove-shot", (_e, id) => {
   shots = shots.filter((s) => s.id !== id);
   broadcastState();
 });
-ipcMain.handle("clear", () => {
+ipcMain.handle("clear", async () => {
+  await endPractice({ score: false });
+  practice = { ...practice, scorecard: null };
   // A cleared session is a new call block: ask about the product brief again.
   config.jdCheckedAt = 0;
   saveConfig();
@@ -1564,6 +1845,7 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  stopSpeaking();
   globalShortcut.unregisterAll();
   listener?.stop();
   asr?.stop();
