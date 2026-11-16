@@ -19,7 +19,7 @@ Competitors: Bill.com (we match POs automatically; their base plan doesn't).
 Lead source: LinkedIn, finance leaders at companies that use NetSuite.
 Meeting to book: 20-minute demo with Priya, our solutions engineer.
 Disclosure line: Heads up, this call is transcribed.`;
-const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive" };
+const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive", email: "sam@ledgerly.com", phone: "512 555 0142" };
 // Who the rep is calling, as typed on the home screen. EVAL_NO_TARGET=1
 // runs without it, to see how much it helps.
 const TARGET = process.env.EVAL_NO_TARGET ? null : { name: "Dana Reyes", company: "Northwind Freight", role: "Controller", notes: "Moved to NetSuite last quarter; hiring a second AP clerk (job post on LinkedIn)." };

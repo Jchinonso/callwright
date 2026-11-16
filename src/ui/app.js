@@ -2014,7 +2014,7 @@ $("jdNew").addEventListener("click", () => {
 });
 
 // You: name, company and role (Settings › Calls).
-const YOU_FIELDS = [["pfName", "profileName"], ["pfCompany", "profileCompany"], ["pfRole", "profileRole"]];
+const YOU_FIELDS = [["pfName", "profileName"], ["pfCompany", "profileCompany"], ["pfRole", "profileRole"], ["pfEmail", "profileEmail"], ["pfPhone", "profilePhone"]];
 $("profileBtn").addEventListener("click", () => {
   for (const [id, name] of YOU_FIELDS) $(id).value = state[name] || "";
   openPanel("profile");

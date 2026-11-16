@@ -30,7 +30,7 @@ export const PERSONAS = {
   gatekeeper: {
     label: "Gatekeeper",
     blurb: "An assistant who screens calls for their boss.",
-    name: "Sam Ortiz",
+    name: "Jordan Ortiz",
     voice: "Moira",
     mood: "Executive assistant screening calls. Asks who's calling and why, says the boss is busy, offers to take a message. Only passes the rep through, or shares the boss's email, if the reason is clear and respectful.",
   },

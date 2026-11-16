@@ -259,7 +259,7 @@
             <h2>You</h2>
             <div class="group">
               <button class="row link" id="profileBtn">
-                <div class="row-text"><span>Name, company and role</span><small>For openers, and when they ask who's calling</small></div>
+                <div class="row-text"><span>Name, company, role and contact</span><small>For openers, "who's calling?", and when they ask for your email or number</small></div>
                 <span class="row-meta"><span id="profileMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
               </button>
             </div>
@@ -427,11 +427,13 @@
         <form class="instructions" id="profileForm" hidden>
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
           <p class="lead">You</p>
-          <p class="hint">Used in openers ("Hi, it's Sam from Ledgerly") and when a prospect asks who's calling. Optional.</p>
+          <p class="hint">Used in openers ("Hi, it's Sam from Ledgerly"), when a prospect asks who's calling, and read out when they ask for your email or number. Optional.</p>
           <div class="ob-grid">
             <label>Name<input id="pfName" maxlength="200" autocomplete="off" placeholder="e.g. Sam Lee" /></label>
             <label>Company<input id="pfCompany" maxlength="200" autocomplete="off" placeholder="e.g. Ledgerly" /></label>
             <label>Role<input id="pfRole" maxlength="200" autocomplete="off" placeholder="e.g. Account executive" /></label>
+            <label>Email<input id="pfEmail" type="email" maxlength="200" autocomplete="off" placeholder="e.g. sam@ledgerly.com" /></label>
+            <label>Phone<input id="pfPhone" maxlength="60" autocomplete="off" placeholder="e.g. 512 555 0142" /></label>
             <label hidden>Salary range<input id="pfSalary" maxlength="200" placeholder="e.g. $140k to $160k" autocomplete="off" /></label>
             <label hidden>Visa status<input id="pfVisa" maxlength="200" placeholder="e.g. Needs sponsorship" autocomplete="off" /></label>
             <label hidden>Notice period<input id="pfNotice" maxlength="200" placeholder="e.g. 4 weeks" autocomplete="off" /></label>

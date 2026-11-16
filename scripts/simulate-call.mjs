@@ -47,7 +47,7 @@ Lead source: LinkedIn, finance leaders at companies that use NetSuite.
 Meeting to book: 20-minute demo with Priya, our solutions engineer.
 Times you can offer: Tuesday 10am, Wednesday 2pm, Thursday 11am.
 Disclosure line: Heads up, this call is transcribed.`;
-const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive" };
+const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive", email: "sam@ledgerly.com", phone: "512 555 0142" };
 const p = PERSONAS[persona];
 const TARGET = { name: p.name, company: "Northwind Freight", role: persona === "gatekeeper" ? "Executive assistant to the CFO" : "Controller", notes: "Moved to NetSuite last quarter; hiring a second AP clerk (job post on LinkedIn)." };
 
@@ -179,5 +179,7 @@ else {
 }
 const avgWer = wers.length ? (100 * wers.reduce((a, b) => a + b, 0)) / wers.length : 0;
 console.log(`Speech: ${wers.length} prospect turns, average word error ${avgWer.toFixed(0)}%.`);
+// One line for comparing runs (scripts that batch personas grep for it).
+console.log(`SUMMARY ${JSON.stringify({ persona, score: card.score ?? null, parts: card.error ? null : [card.opener.score, card.discovery.score, card.objections.score, card.close.score], booked: card.booked ?? null, outcome: record.outcome ?? null, wer: Math.round(avgWer) })}`);
 asr.stop();
 rmSync(tmp, { recursive: true, force: true });

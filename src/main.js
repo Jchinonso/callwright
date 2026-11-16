@@ -71,7 +71,7 @@ const defaults = { provider: "anthropic", model: DEFAULT_ANTHROPIC_MODEL, openai
   // Setup: onboarded once the welcome and setup steps are done or skipped.
   // Your details go with every question like About you. jdCheckedAt: when the
   // product brief was last confirmed for a call session (ms; 0 = ask again).
-  onboarded: false, profileName: "", profileCompany: "", profileRole: "", salary: "", visa: "", notice: "", jdCheckedAt: 0,
+  onboarded: false, profileName: "", profileCompany: "", profileRole: "", profileEmail: "", profilePhone: "", salary: "", visa: "", notice: "", jdCheckedAt: 0,
   // Long answers open as key points instead of in full.
   compactAnswers: false,
   // Sales mode, while listening: reply once the prospect finishes their turn.
@@ -100,8 +100,8 @@ const CONFIG_MIGRATIONS = [
   },
 ];
 // You: the rep's name, company and role, for openers and "who is this?".
-const PROFILE_FIELDS = ["profileName", "profileCompany", "profileRole"];
-const profile = () => ({ name: config.profileName, company: config.profileCompany, role: config.profileRole });
+const PROFILE_FIELDS = ["profileName", "profileCompany", "profileRole", "profileEmail", "profilePhone"];
+const profile = () => ({ name: config.profileName, company: config.profileCompany, role: config.profileRole, email: config.profileEmail, phone: config.profilePhone });
 // About you and the product brief are sent word for word (never compressed),
 // so answers can use their exact wording.
 const MAX_DOC = 20000;
@@ -532,6 +532,8 @@ function state() {
     profileName: config.profileName,
     profileCompany: config.profileCompany,
     profileRole: config.profileRole,
+    profileEmail: config.profileEmail,
+    profilePhone: config.profilePhone,
     salary: config.salary,
     visa: config.visa,
     notice: config.notice,
