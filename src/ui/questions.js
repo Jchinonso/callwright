@@ -9,7 +9,7 @@ function isQuestion(text) {
   const t = text.trim();
   if (/\?\s*$/.test(t) || QUESTION_START.test(t)) return true;
   // An announced question: "My very first question for you is, tell me about
-  // yourself", "The next question is…", "Question two: …". Interviewers lead
+  // yourself", "The next question is…", "Question two: …". Callers lead
   // with these, and what follows is the question whatever its wording.
   if (QUESTION_ANNOUNCED.test(t)) return true;
   // On a sales call the prospect's pushback needs a reply as much as a
@@ -57,9 +57,9 @@ const QUESTION_ANNOUNCED =/\b(?:(?:my|our|the|your|a|one|another)\s+)?(?:(?:very
 //   means the user was answering aloud, so it's a new turn.
 // - A new question replaces the old one.
 // - A substantial line that isn't a question, within FOLLOW_UP_MS of the
-//   question, is the interviewer adding to it ("just whatever comes to mind"),
+//   question, is the other side adding to it ("just whatever comes to mind"),
 //   so it keeps the old question unchanged. After that window it means the
-//   talk moved on (the interviewer asked something isQuestion missed), so the
+//   talk moved on (they asked something isQuestion missed), so the
 //   old question is dropped and the model picks the latest one from the
 //   transcript.
 // - Short lines ("take your time") keep it.

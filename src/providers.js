@@ -236,7 +236,7 @@ function openaiCompatible({ apiKey, baseUrl, model: defaultModel }) {
   // Claude models (and older Gemini) only up to a cache_control breakpoint, set
   // here on the system message (résumé, job description, instructions).
   const cacheable = (model) => openRouter && /^(?:anthropic\/|google\/gemini)/i.test(String(model || defaultModel).replace(/^~/, ""));
-  // Claude keeps it an hour, as on Anthropic's own API (pauses in an interview
+  // Claude keeps it an hour, as on Anthropic's own API (pauses in a call
   // often run past 5 minutes); Gemini takes the plain 5-minute marker.
   const cacheMark = (model) => (/^~?anthropic\//.test(String(model || defaultModel)) ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" });
   const messages = (system, content, model) => [{ role: "system", content: cacheable(model) ? [{ type: "text", text: system, cache_control: cacheMark(model) }] : system }, { role: "user", content }];

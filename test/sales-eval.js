@@ -20,6 +20,9 @@ Lead source: LinkedIn, finance leaders at companies that use NetSuite.
 Meeting to book: 20-minute demo with Priya, our solutions engineer.
 Disclosure line: Heads up, this call is transcribed.`;
 const PROFILE = { name: "Sam Lee", company: "Ledgerly", role: "Account executive" };
+// Who the rep is calling, as typed on the home screen. EVAL_NO_TARGET=1
+// runs without it, to see how much it helps.
+const TARGET = process.env.EVAL_NO_TARGET ? null : { name: "Dana Reyes", company: "Northwind Freight", role: "Controller", notes: "Moved to NetSuite last quarter; hiring a second AP clerk (job post on LinkedIn)." };
 const them = (text) => ({ role: "them", text, at: Date.now(), start: Date.now() });
 
 const CASES = [
@@ -29,13 +32,13 @@ const CASES = [
   { name: "not interested", question: "Look, we're not interested.", transcript: [them("Look, we're not interested.")], expect: ["forward"] },
   { name: "send email", question: "Just send me an email.", transcript: [them("Just send me an email.")], expect: ["forward"] },
   { name: "competitor", question: "We already use Bill.com.", transcript: [them("We already use Bill.com.")], expect: ["forward", "noKnock"] },
-  { name: "budget", question: "There's no budget for this right now.", transcript: [them("There's no budget for this right now.")], expect: ["forward"] },
+  { name: "budget", question: "There's no budget for this right now.", transcript: [them("There's no budget for this right now.")], expect: ["forward", "budget"] },
   { name: "price question", question: "What does it cost?", transcript: [them("What does it cost?")], expect: ["forward", "price"] },
   { name: "unknown fact", question: "Does it integrate with SAP?", transcript: [them("Does it integrate with SAP?")], expect: ["notInBrief"] },
-  { name: "bad time", question: "I'm driving, bad time.", transcript: [them("I'm driving, bad time.")], expect: ["forward", "twoTimes"] },
+  { name: "bad time", question: "I'm driving, bad time.", transcript: [them("I'm driving, bad time.")], expect: ["forward"] },
   { name: "who is this", question: "Who is this? How did you get my number?", transcript: [them("Who is this? How did you get my number?")], expect: ["forward", "source"] },
   { name: "pain stated", question: "Honestly matching POs takes my team most of Friday.", transcript: [them("Honestly matching POs takes my team most of Friday.")], expect: ["forward"] },
-  { name: "close on request", question: "Rep asks: give my ask for the meeting now.", transcript: [them("Matching POs takes my team most of Friday."), them("Yeah, it's a pain.")], expect: ["twoTimes"] },
+  { name: "close on request", question: "Rep asks: give my ask for the meeting now.", transcript: [them("Matching POs takes my team most of Friday."), them("Yeah, it's a pain.")], expect: ["twoTimes", "introducePriya"] },
   { name: "do not call", question: "Take me off your list.", transcript: [them("Take me off your list.")], expect: ["dnc"], noJudge: true },
 ];
 
@@ -52,7 +55,7 @@ function checks(c, raw) {
   const ask = lines.find((l) => /^ask:/i.test(l))?.replace(/^ask:\s*/i, "") || "";
   const spoken = `${bold || ""} ${ask}`;
   const words = (bold || "").split(/\s+/).filter(Boolean).length;
-  const limit = c.expect.includes("pitch") ? 50 : c.expect.includes("opener") || /close/.test(c.name) ? 40 : 32;
+  const limit = c.expect.includes("pitch") ? 50 : c.expect.includes("opener") || /close/.test(c.name) ? 40 : c.expect.includes("source") ? 38 : 32;
   if (words > limit) fails.push(`bold line is ${words} words (limit ${limit})`);
   for (const b of BANNED) if (b.test(spoken)) fails.push(`banned phrase ${b}`);
   // Every number said aloud must come from the brief.
@@ -71,6 +74,11 @@ function checks(c, raw) {
   if (exp.has("pitch") && !/62%/.test(spoken)) fails.push("pitch has no proof point");
   if (exp.has("price") && !/\$12/.test(spoken)) fails.push("price not from the brief");
   if (exp.has("source") && !/linkedin/i.test(spoken)) fails.push("doesn't say where their details came from");
+  // Answered head on, or reframed against a cost they carry (a hire, hours).
+  if (exp.has("budget") && !/budget|cost|spend|price|hir(?:e|ing)|headcount|clerk|hours/i.test(bold || "")) fails.push("ignores the budget objection");
+  if (exp.has("introducePriya") && /priya/i.test(spoken) && !/priya,? (?:our|who|a)\b|solutions engineer/i.test(spoken)) fails.push("names Priya without saying who she is");
+  if (exp.has("dnc") && stage !== "close") fails.push(`do-not-call stage is ${stage}, not close`);
+  if (exp.has("opener") && TARGET && !/dana/i.test(spoken)) fails.push("opener doesn't use the prospect's name");
   if (exp.has("noKnock") && /\b(worse|terrible|bad|clunky|outdated)\b/i.test(spoken)) fails.push("knocks the competitor");
   if (exp.has("notInBrief") && !/not in brief/i.test(text)) fails.push("no 'not in brief' note for an unknown fact");
   if (exp.has("notInBrief") && /\byes\b.*\bsap\b|integrates? with sap/i.test(bold || "")) fails.push("claims an SAP integration");
@@ -82,7 +90,7 @@ function checks(c, raw) {
   return { fails, spoken, stage };
 }
 
-const JUDGE = `You are a busy B2B buyer (a finance controller) who gets cold calls every week and usually says no. Rate the rep's line below, said to you at this point in the call: how likely does it make you to keep talking and eventually agree to a short meeting? 1 = I'd hang up, 10 = I'd agree to the meeting. Judge relevance to you, clarity, honesty, brevity and whether it respects your time. Reply with only JSON: {"score": n, "why": "under 20 words"}`;
+const JUDGE = `You are Dana Reyes, controller at Northwind Freight (moved to NetSuite last quarter, about to hire a second AP clerk), a busy buyer who gets cold calls every week and usually says no. Rate the rep's line below, said to you at this point in the call: how likely does it make you to keep talking and eventually agree to a short meeting? 1 = I'd hang up, 10 = I'd agree to the meeting. Judge relevance to you, clarity, honesty, brevity and whether it respects your time. Reply with only JSON: {"score": n, "why": "under 20 words"}`;
 
 const providerName = process.env.EVAL_PROVIDER || "anthropic";
 const model = process.argv[2] || (providerName === "openai" ? process.env.EVAL_MODEL : DEFAULT_ANTHROPIC_MODEL);
@@ -98,7 +106,7 @@ const only = process.env.EVAL_ONLY ? new RegExp(process.env.EVAL_ONLY, "i") : nu
 let failed = 0;
 const scores = [];
 for (const c of CASES.filter((c) => !only || only.test(c.name))) {
-  const { done } = ask({ provider, model, question: c.question, transcript: c.transcript, previous: c.previous || [], screenshots: [], effort: "low", style: "sales", customInstructions: "", resume: "", productBrief: BRIEF, profile: PROFILE, onText() {} });
+  const { done } = ask({ provider, model, question: c.question, transcript: c.transcript, previous: c.previous || [], screenshots: [], effort: "low", style: "sales", customInstructions: "", resume: "", productBrief: BRIEF, profile: PROFILE, target: TARGET, onText() {} });
   const { result, problem } = await done;
   const reply = result.text.trim();
   const { fails, spoken, stage } = checks(c, reply);

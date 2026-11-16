@@ -42,6 +42,9 @@ export function pickUpdate(release, { current, arch, trusted = fromReleases }) {
 
 export async function checkForUpdate({ current, arch, url = RELEASES_URL, trusted, fetchFn = fetch }) {
   const response = await fetchFn(url, { headers: { accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(15000) });
+  // GitHub answers 404 until the repository has its first release: nothing
+  // to update to yet, not an error.
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return pickUpdate(await response.json(), { current, arch, trusted });
 }

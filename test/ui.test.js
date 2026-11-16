@@ -352,18 +352,18 @@ test("settings: every tab, and each form goes back to the tab it came from", { s
   await run(`if (!document.getElementById("jdCard").hidden) document.getElementById("jdSame").click();`);
   await click("#menuBtn");
   assert.ok(await shown("menu"));
-  for (const tab of ["answers", "interview", "session", "general"]) {
+  for (const tab of ["answers", "calls", "session", "general"]) {
     await click(`#settingsTabs [data-tab="${tab}"]`);
     assert.ok(await run(`return !document.querySelector('#menu .tab[data-tab="${tab}"]').hidden;`), tab);
   }
-  await click('#settingsTabs [data-tab="interview"]');
+  await click('#settingsTabs [data-tab="calls"]');
 
   await click("#jobBtn");
   assert.ok(await shown("docForm"));
   assert.ok(await run(`return document.querySelector(".dock").hidden;`), "the question box hides behind forms");
   await click("#docForm [data-back]");
   assert.ok(await shown("menu"));
-  assert.equal(await run(`return settingsTab;`), "interview");
+  assert.equal(await run(`return settingsTab;`), "calls");
 
   await click("#profileBtn");
   assert.ok(await shown("profileForm"));
@@ -414,7 +414,7 @@ test("Appearance setting: Light then Dark updates the setting and aria-checked",
   await until(`state.theme === "system"`);
 });
 
-test("mode menu switches Interview and Meeting", { skip }, async () => {
+test("mode menu switches Sales and Meeting", { skip }, async () => {
   await click("#modeBtn");
   assert.ok(await shown("modeMenu"));
   await click('#modeMenu [data-value="meeting"]');
@@ -538,6 +538,9 @@ test("a question split by pauses shows whole, lead-in included, and Answer sends
 });
 
 test("Answer pressed mid-question waits for the rest, then sends the whole question", { skip }, async () => {
+  // Start from a quiet app: an earlier answer still streaming would send a
+  // state update that resets the faked listening state mid-test.
+  await until(`!state.busy && !state.savingNotes`);
   const now = Date.now();
   const asked = await run(`return answers.length;`);
   const before = await run(`
@@ -596,7 +599,7 @@ test("auto-answer waits while you type, and stays off in Meeting mode", { skip }
   await until(`state.style !== "sales"`);
   await run(`state.listening = true; onTranscript({ role: "them", text: "What's the plan for next quarter?", start: ${now + 9000}, at: ${now + 10500} });`);
   await sleep(1200);
-  assert.equal(await run(`return answers.length;`), count + 1, "no auto-answer outside Interview mode");
+  assert.equal(await run(`return answers.length;`), count + 1, "no auto-answer outside Sales mode");
   await click("#modeBtn");
   await click('#modeMenu [data-value="sales"]');
   await until(`state.style === "sales"`);
@@ -677,6 +680,9 @@ test("⌘↵ doesn't stop an auto-answer already under way; Stop does; typing se
 });
 
 test("typing a question while Dialpal waits for a heard one sends the typed one instead", { skip }, async () => {
+  // Start from a quiet app: an earlier answer still streaming would send a
+  // state update that resets the faked listening state mid-test.
+  await until(`!state.busy && !state.savingNotes`);
   const now = Date.now();
   const count = await run(`return answers.length;`);
   await run(`
@@ -690,7 +696,8 @@ test("typing a question while Dialpal waits for a heard one sends the typed one 
   await until(`waitingForQuestion`);
   await run(`document.getElementById("question").value = "What is a race condition?"; document.getElementById("askForm").requestSubmit();`);
   await until(`answers.length === ${count + 1} && answers.at(-1).status === "done"`);
-  await sleep(400);
+  // The wait loop notices the typed question on its next poll; give it time.
+  await until(`!waitingForQuestion`);
   assert.deepEqual(await run(`return [answers.length, answers.at(-1).question, waitingForQuestion];`), [count + 1, "What is a race condition?", false]);
   await run(`finishSpeaking(); stillHearing = async () => false; pendingQuestion = null;`);
 });
@@ -851,7 +858,7 @@ test("stopping Listen drops an unanswered question, so it isn't shown or auto-an
 test("Sales mode works without About you; auto-reply says it needs Sales mode", { skip }, async () => {
   await run(`await g.setSetting("resume", ""); await g.setSetting("jdCheckedAt", 0); await g.setSetting("style", "brief");`);
   await until(`state.style === "brief" && !state.resume`);
-  await run(`setMenu(true); document.querySelector('#settingsTabs [data-tab="interview"]').click();`);
+  await run(`setMenu(true); document.querySelector('#settingsTabs [data-tab="calls"]').click();`);
   assert.match(await run(`return document.getElementById("autoAnswerHint").textContent;`), /Only works in Sales mode/);
   await run(`setMenu(false);`);
   await click("#modeBtn");
@@ -860,7 +867,7 @@ test("Sales mode works without About you; auto-reply says it needs Sales mode", 
   assert.equal(await run(`return !!onboarding;`), false, "no setup forced for a missing About you");
   assert.equal(await run(`return document.getElementById("question").placeholder;`), "Type what they said, or press Reply");
   assert.equal(await run(`return document.getElementById("askBtn").textContent;`), "Reply");
-  await run(`setMenu(true); document.querySelector('#settingsTabs [data-tab="interview"]').click();`);
+  await run(`setMenu(true); document.querySelector('#settingsTabs [data-tab="calls"]').click();`);
   assert.match(await run(`return document.getElementById("autoAnswerHint").textContent;`), /as soon as the prospect finishes/);
   await run(`setMenu(false);`);
 });
@@ -887,7 +894,7 @@ test("without an API key: the key form shows, the gear still opens Settings, Lis
   assert.ok(!(await shown("keyForm")));
   assert.equal(await run(`return getComputedStyle(document.getElementById("listenBtn")).display;`), "none", "still hidden in Settings");
   assert.match(await run(`return document.getElementById("keyMeta").textContent;`), /no key yet/);
-  await click('#settingsTabs [data-tab="interview"]');
+  await click('#settingsTabs [data-tab="calls"]');
   await click("#profileBtn");
   assert.ok(await shown("profileForm"), "Settings forms open too");
   await click("#profileCancel");
@@ -1408,6 +1415,27 @@ test("Start call shows the opener before the prospect says anything", { skip }, 
   await until(`!state.listening`);
   await run(`if (wrapOpen) document.getElementById("wrapSkip").click();`);
   await until(`!wrapOpen`);
+});
+
+test("who you're calling: typed on home, sent with every Sales reply, cleared when the call is saved", { skip }, async () => {
+  await run(`await g.clear(); await g.setSetting("style", "sales"); answers = []; page = -1; wrapOpen = false; render();`);
+  await until(`state.style === "sales" && !!state.productBrief`);
+  assert.ok(await shown("homeTarget"));
+  await run(`for (const [id, v] of [["tgName", "Dana Reyes"], ["tgCompany", "Northwind Freight"], ["tgRole", "Controller"], ["tgNotes", "Moved to NetSuite"]]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input")); }`);
+  await until(`state.callTarget.notes === "Moved to NetSuite"`);
+  const before = requests.length;
+  await run(`state.listening = true; render(); document.querySelector('#chips [data-next="opener"]').click();`);
+  await until(`answers.length === 1 && answers[0].status === "done"`);
+  assert.match(requests.slice(before).find((r) => r.stream).messages[1].content.at(-1).text, /<prospect>[\s\S]*Name: Dana Reyes\nCompany: Northwind Freight\nRole: Controller\nNotes: Moved to NetSuite/);
+  await run(`await g.testHeard({ text: "Who is this?", keep: true });`);
+  await until(`state.transcriptCount === 1`);
+  await run(`openWrap(); render();`);
+  assert.match(await run(`return document.getElementById("wrapMeta").textContent;`), /^Dana Reyes, Northwind Freight\./);
+  await run(`document.getElementById("wrap").requestSubmit();`);
+  await until(`!wrapOpen && !state.callTarget.name`, 6000);
+  assert.equal(callLog().at(-1).company, "Brightline", "the model's reading wins when it has one");
+  await run(`render();`);
+  assert.equal(await run(`return document.getElementById("tgName").value;`), "", "cleared for the next dial");
 });
 
 test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {

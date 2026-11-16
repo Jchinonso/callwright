@@ -805,7 +805,7 @@ body.needs-key #listenBtn, body.needs-key #shotBtn { display: none; }
 .modepick-btn { display: inline-flex; align-items: center; gap: 2px; height: 34px; padding: 0 6px 0 10px; border-radius: 999px; background: var(--raise); color: var(--dim); font-size: 12.5px; font-weight: 600; }
 .modepick-btn:hover, .modepick-btn[aria-expanded="true"] { background: var(--raise-hover); color: var(--text); }
 .modepick-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.modepick.interview .modepick-btn { background: rgba(185, 163, 255, 0.2); color: var(--violet); }
+.modepick.sales .modepick-btn { background: rgba(185, 163, 255, 0.2); color: var(--violet); }
 .modepick.exam .modepick-btn { background: rgba(255, 190, 90, 0.18); color: var(--caution); }
 .modemenu { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 10; width: 250px; padding: 4px; border-radius: 12px; background: var(--menu); border: 1px solid var(--edge); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; }
 .modemenu[hidden] { display: none; }
@@ -936,7 +936,7 @@ body.answering .rim { background: var(--ice); }
 .row[aria-checked="true"] .switch { background: var(--ice); }
 .think-btn { border-color: var(--edge); background: var(--raise); color: var(--text); }
 .think-btn:hover { background: var(--raise-hover); }
-.modepick.interview .modepick-btn { background: color-mix(in srgb, var(--ice) 16%, transparent); color: var(--ice); }
+.modepick.sales .modepick-btn { background: color-mix(in srgb, var(--ice) 16%, transparent); color: var(--ice); }
 
 /* The reply as a cue card: the line to say, big and condensed so it reads
    at a glance mid-sentence; everything after it is quieter. */
@@ -1154,3 +1154,10 @@ body.idle #shotBtn, body.wrapping #shotBtn { display: none; }
 .chips-label { min-width: 62px; }
 .chip.say { border-color: color-mix(in srgb, var(--ice) 40%, transparent); color: var(--ice); }
 .chip.say:hover { background: color-mix(in srgb, var(--ice) 12%, transparent); border-color: var(--ice); }
+.home-target { margin: 10px 0 0; }
+.ht-label { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--dim); }
+.ht-label small { font-weight: 400; color: var(--faint); margin-left: 4px; }
+.target-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.target-grid input { width: 100%; height: 32px; }
+.target-grid .wide { grid-column: 1 / -1; }
+@media (max-width: 540px) { .target-grid { grid-template-columns: 1fr; } }

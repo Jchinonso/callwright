@@ -25,16 +25,16 @@ let practiceLines = []; // this practice call's lines, for the call view
 let docKind = null; // "resume" | "productBrief" while panel is "doc"
 // Setup in progress: { step, needsKey, use }. Null once done or skipped.
 let onboarding = null;
-// The "New interview?" card is showing.
+// The "Same product brief?" card is showing.
 let askingJob = false;
 let collapsed = false;
 let pendingQuestion = null; // latest question someone else asked, until answered
 // Settings tab, remembered per viewer; settings work without it.
 let settingsTab = (() => {
   try {
-    return localStorage.getItem("dialpal.settingsTab") || "interview";
+    return localStorage.getItem("dialpal.settingsTab")?.replace(/^interview$/, "calls") || "calls";
   } catch {
-    return "interview";
+    return "calls";
   }
 })();
 const STYLE_HINTS = {
@@ -194,8 +194,8 @@ function renderMenu() {
   renderAboutUpdate();
   $("styleHint").textContent = `${STYLE_HINTS[meetingStyle()]}${state.style === "sales" ? " Used when you switch back to Meeting." : ""}`;
   const sales = state.style === "sales";
-  $("interviewToggle").setAttribute("aria-checked", String(sales));
-  $("interviewOffNote").hidden = sales;
+  $("salesToggle").setAttribute("aria-checked", String(sales));
+  $("salesOffNote").hidden = sales;
   $("cloakWarn").hidden = !!state.invisible;
   const openai = state.provider === "openai";
   $("effortRow").hidden = state.effortSupported === false; // Claude models without effort
@@ -736,7 +736,7 @@ function stopWatching() {
 }
 let autoAnswerPending = false; // the next answer-start is auto-answer's
 
-// Auto-answer at the end of the interviewer's turn, for what the rules above
+// Auto-answer at the end of the prospect's turn, for what the rules above
 // don't recognise as a question ("My first question for you is, tell me about
 // yourself", "I'd love to hear about…"). A turn is the other side's lines since
 // the last answer started (or Listen started). Once they've gone quiet (same
@@ -1688,7 +1688,7 @@ $("settingsTabs").addEventListener("click", (e) => {
 });
 // Sales mode is Style > Sales, switched from Settings > Sales or the main
 // screen; turning it off goes back to the style used before.
-function toggleInterview() {
+function toggleSales() {
   if (state.style === "sales") {
     g.setSetting("style", meetingStyle());
   } else {
@@ -1698,7 +1698,7 @@ function toggleInterview() {
     g.setSetting("style", "sales");
   }
 }
-$("interviewToggle").addEventListener("click", toggleInterview);
+$("salesToggle").addEventListener("click", toggleSales);
 function setModeMenu(open) {
   $("modeMenu").hidden = !open;
   $("modeBtn").setAttribute("aria-expanded", String(open));
@@ -1712,7 +1712,7 @@ $("modeMenu").addEventListener("click", (e) => {
   if (v === "practice") {
     openPanel("practice");
   } else if (v === "sales") {
-    if (state.style !== "sales") toggleInterview();
+    if (state.style !== "sales") toggleSales();
   } else if (v === "meeting") {
     if (state.style !== "brief" && state.style !== "natural") {
       g.setSetting("style", meetingStyle());
@@ -1823,7 +1823,7 @@ for (const el of $("glass").children) sizer.observe(el);
 new MutationObserver(fit).observe($("glass"), { subtree: true, attributes: true, attributeFilter: ["hidden"] });
 
 // Welcome and setup: welcome, then (only if needed) the key, about you, the
-// job description for interviews, and a ready screen. Shown on first launch
+// product brief for sales calls, and a ready screen. Shown on first launch
 // and from Settings > General > Show welcome again.
 // step: where it opens; "about" (the resume) when only the resume is missing.
 function startOnboarding(step = "welcome") {
@@ -1845,7 +1845,7 @@ function startOnboarding(step = "welcome") {
   $("obSalary").value = state.salary || "";
   $("obVisa").value = state.visa || "";
   $("obNotice").value = state.notice || "";
-  // Hiding defaults on during setup for interviews; the ready step can undo it.
+  // Hiding defaults on during setup for sales calls; the ready step can undo it.
   onboarding.hide = state.invisible || onboarding.use !== "meetings";
 }
 function nextStep(dir) {
@@ -1884,8 +1884,7 @@ function renderOnboarding() {
   for (const b of $("obUse").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.value === onboarding.use));
   const words = $("obResume").value.trim() ? $("obResume").value.trim().split(/\s+/).length : 0;
   $("obResumeMeta").textContent = words ? `${words.toLocaleString()} words` : "";
-  // Long answers are built from the resume, so interviews need one;
-  // meetings don't. Skip setup stays hidden until one is saved.
+  // Nothing on this step is required, so Next and Skip setup are always open.
   const needResume = step === "about" && resumeRequired();
   $("obResumeNeed").textContent = "(optional)";
   $("obAboutHint").textContent = onboarding.use === "meetings"
@@ -2273,6 +2272,9 @@ function renderHome() {
   $("homeCall").classList.toggle("primary", !!title);
   $("homeCall").classList.toggle("ghost", !title);
   $("homeCall").disabled = !state.hasKey;
+  $("homeTarget").hidden = !title;
+  const t = state.callTarget || {};
+  for (const [id, k] of TARGET_FIELDS) if (document.activeElement !== $(id)) $(id).value = t[k] || "";
   $("homeCallKeys").textContent = plainKeys(state.shortcuts?.listen || "");
   const k = state.shortcuts || {};
   $("homeKeys").textContent = [k.ask && `${plainKeys(k.ask)} reply`, k.toggleWindow && `${plainKeys(k.toggleWindow)} show or hide`].filter(Boolean).join(" · ");
@@ -2324,7 +2326,8 @@ function openWrap() {
   $("wrapNext").value = "";
   for (const b of $("outcomes").querySelectorAll("button")) b.setAttribute("aria-checked", "false");
   const ms = state.listeningSince ? Date.now() - state.listeningSince : 0;
-  $("wrapMeta").textContent = `${state.transcriptCount} ${state.transcriptCount === 1 ? "line" : "lines"} heard${ms > 1000 ? `, ${formatElapsed(ms)}` : ""}. ${state.hubspotEnabled ? "Saving logs it to HubSpot too." : "Saved to your call log."}`;
+  const who = [state.callTarget?.name, state.callTarget?.company].filter(Boolean).join(", ");
+  $("wrapMeta").textContent = `${who ? `${who}. ` : ""}${state.transcriptCount} ${state.transcriptCount === 1 ? "line" : "lines"} heard${ms > 1000 ? `, ${formatElapsed(ms)}` : ""}. ${state.hubspotEnabled ? "Saving logs it to HubSpot too." : "Saved to your call log."}`;
 }
 function closeWrap() {
   wrapOpen = false;
@@ -2352,3 +2355,21 @@ $("wrapSkip").addEventListener("click", async () => {
   await g.nextCall();
   closeWrap();
 });
+
+// Who the rep is calling: saved as they type, sent with every Sales reply,
+// cleared when the call is saved.
+const TARGET_FIELDS = [["tgName", "name"], ["tgCompany", "company"], ["tgRole", "role"], ["tgNotes", "notes"]];
+let targetTimer = null;
+const saveTarget = () => g.setTarget(Object.fromEntries(TARGET_FIELDS.map(([id, k]) => [k, $(id).value])));
+for (const [id] of TARGET_FIELDS) {
+  $(id).addEventListener("input", () => {
+    clearTimeout(targetTimer);
+    targetTimer = setTimeout(saveTarget, 300);
+  });
+  $(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      clearTimeout(targetTimer);
+      saveTarget().then(() => g.toggleListening());
+    }
+  });
+}

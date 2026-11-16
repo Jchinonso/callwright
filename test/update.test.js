@@ -35,7 +35,7 @@ test("checkForUpdate reads the latest release; a failed request throws", async (
   const r = release("1.7.0", [dmg("1.7.0", "arm64")]);
   const found = await checkForUpdate({ current: "1.6.2", arch: "arm64", fetchFn: async () => ({ ok: true, json: async () => r }) });
   assert.equal(found.version, "1.7.0");
-  await assert.rejects(checkForUpdate({ current: "1.6.2", arch: "arm64", fetchFn: async () => ({ ok: false, status: 404 }) }), /HTTP 404/);
+  await assert.rejects(checkForUpdate({ current: "1.6.2", arch: "arm64", fetchFn: async () => ({ ok: false, status: 503 }) }), /HTTP 503/);
 });
 
 test("downloadUpdate keeps a file that matches its checksum and deletes one that doesn't", async () => {
@@ -129,4 +129,10 @@ test("removeUpdateLeftovers deletes only what an interrupted update leaves", asy
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("checkForUpdate: a repository with no releases yet (404) means no update, not an error", async () => {
+  const { checkForUpdate } = await import("../src/update.js");
+  assert.equal(await checkForUpdate({ current: "0.1.0", arch: "arm64", url: "http://x", fetchFn: async () => new Response("{}", { status: 404 }) }), null);
+  await assert.rejects(checkForUpdate({ current: "0.1.0", arch: "arm64", url: "http://x", fetchFn: async () => new Response("{}", { status: 500 }) }), /HTTP 500/);
 });

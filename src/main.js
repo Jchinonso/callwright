@@ -558,6 +558,7 @@ function state() {
     shortcuts: shortcuts(),
     transcriptCount: transcript.length,
     practice: { ...practice },
+    callTarget: { ...callTarget },
     personas: Object.entries(PERSONAS).map(([id, p]) => ({ id, label: p.label, blurb: p.blurb, name: p.name })),
     practicePersona: config.practicePersona,
     practiceCompany: config.practiceCompany,
@@ -912,6 +913,7 @@ async function runAsk(question, { heard = false, heardAt = null, hard = false, d
     resume: config.resume,
     productBrief: config.productBrief,
     profile: profile(),
+    target: callTarget,
     gated,
     onText: (delta) => {
       if (skipped) return;
@@ -1126,6 +1128,11 @@ async function saveNotes({ scorecard = null, practiceCall = null, override = nul
 
     record ??= fallbackRecord(transcript);
     Object.assign(record, { date: now.toISOString(), durationMin: callMinutes(), notesFile: file });
+    // What the rep typed about the prospect fills what the call didn't say.
+    if (!practiceCall) {
+      record.company ??= callTarget.company.trim() || null;
+      record.contact ??= callTarget.name.trim() || null;
+    }
     if (override) {
       if (Object.hasOwn(OUTCOMES, override.outcome)) record.outcome = override.outcome;
       const text = (v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || null;
@@ -1174,6 +1181,10 @@ const hubspotOptions = () => (TEST_DIR && process.env.DIALPAL_HUBSPOT_URL ? { ba
 // the transcript as "them" and the rep's as "me", so hints (⌘↵ with nothing
 // typed) work exactly as on a real call. Listening to the Mac's audio is off
 // for the whole practice call.
+// Who the rep is calling (home screen, before the call): name, company,
+// role and notes. Sent with every Sales reply; cleared once the call is saved.
+let callTarget = { name: "", company: "", role: "", notes: "" };
+
 let practice = { active: false, persona: null, name: null, startedAt: null, thinking: false, speaking: false, scoring: false, mic: false, scorecard: null, lastPersona: null };
 let mic = null;
 let sayProc = null;
@@ -1715,13 +1726,20 @@ ipcMain.handle("get-stats", async () => computeStats(await readRecords(notesDir(
 ipcMain.handle("save-call", async (_e, override) => {
   const record = await saveNotes({ override: override || null });
   if (!record) return false;
+  callTarget = { name: "", company: "", role: "", notes: "" };
   transcript = [];
   answers = [];
   shots = [];
   broadcastState();
   return true;
 });
+ipcMain.handle("set-target", (_e, target) => {
+  const clean = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+  callTarget = { name: clean(target?.name, 120), company: clean(target?.company, 120), role: clean(target?.role, 120), notes: clean(target?.notes, 500) };
+  broadcastState();
+});
 ipcMain.handle("next-call", () => {
+  callTarget = { name: "", company: "", role: "", notes: "" };
   transcript = [];
   answers = [];
   shots = [];

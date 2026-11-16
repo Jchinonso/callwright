@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld("dialpal", {
   getStats: () => ipcRenderer.invoke("get-stats"),
   saveCall: (override) => ipcRenderer.invoke("save-call", override),
   nextCall: () => ipcRenderer.invoke("next-call"),
+  setTarget: (target) => ipcRenderer.invoke("set-target", target),
   openCallLog: () => ipcRenderer.invoke("open-call-log"),
   setHubSpotToken: (token) => ipcRenderer.invoke("set-hubspot-token", token),
   testHubSpot: (token) => ipcRenderer.invoke("test-hubspot", token),

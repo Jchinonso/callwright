@@ -150,7 +150,7 @@ await until(`document.getElementById("statTiles").children.length === 4`);
 await shot("stats");
 await run(`closePanel(); setMenu(false);`);
 
-await run(`document.getElementById("menuBtn").click(); document.querySelector('#settingsTabs [data-tab="interview"]').click();`);
+await run(`document.getElementById("menuBtn").click(); document.querySelector('#settingsTabs [data-tab="calls"]').click();`);
 await shot("settings-sales");
 // Shown with Anthropic selected (placeholder key; nothing is sent).
 await run(`await g.setSetting("provider", "anthropic"); await g.setSetting("model", "claude-sonnet-5-5"); document.querySelector('#settingsTabs [data-tab="answers"]').click();`);

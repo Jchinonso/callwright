@@ -149,3 +149,19 @@ test("the sales prompt sells honestly: their problem first, one proof point, qua
   assert.ok(p.includes("Hear the no first"));
   assert.ok(p.includes("lead source"));
 });
+
+test("the prospect block goes in the user message for Sales replies only, never the cached system prompt", async () => {
+  const { prospectBlock } = await import("../src/assistant.js");
+  assert.equal(prospectBlock(null), "");
+  assert.equal(prospectBlock({ name: " ", company: "" }), "");
+  assert.match(prospectBlock({ name: "Dana Reyes", role: "Controller", notes: "Moved to NetSuite" }), /<prospect>\n.*\nName: Dana Reyes\nRole: Controller\nNotes: Moved to NetSuite\n<\/prospect>/);
+  const sent = (style) => {
+    let params;
+    const provider = { name: () => "t", stream: (p) => ((params = p), { done: new Promise(() => {}), abort() {} }) };
+    ask({ provider, model: "m", question: "Hello?", transcript: [], previous: [], screenshots: [], effort: "low", style, target: { name: "Dana" }, onText() {} });
+    return params;
+  };
+  assert.match(sent("sales").parts.at(-1).text, /^<prospect>/);
+  assert.ok(!sent("sales").system.includes("Name: Dana"), "the prospect never enters the cached system prompt");
+  assert.ok(!sent("brief").parts.at(-1).text.includes("<prospect>"));
+});

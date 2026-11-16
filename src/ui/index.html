@@ -164,6 +164,15 @@
             <span class="hb-text" id="homeBriefText"></span>
             <span class="hb-edit" id="homeBriefEdit">Edit</span>
           </button>
+          <div class="home-target" id="homeTarget">
+            <span class="ht-label">Who are you calling? <small>Optional. Every line gets written for them.</small></span>
+            <div class="target-grid">
+              <input id="tgName" maxlength="120" placeholder="Name" autocomplete="off" aria-label="Their name" />
+              <input id="tgCompany" maxlength="120" placeholder="Company" autocomplete="off" aria-label="Their company" />
+              <input id="tgRole" maxlength="120" placeholder="Role, e.g. Controller" autocomplete="off" aria-label="Their role" />
+              <input id="tgNotes" class="wide" maxlength="500" placeholder="What you know: their tools, a trigger (new hire, funding), a mutual contact" autocomplete="off" aria-label="What you know about them" />
+            </div>
+          </div>
           <div class="home-actions">
             <button type="button" class="primary big" id="homeAddBrief" hidden>Add your product brief</button>
             <button type="button" class="primary big" id="homeCall"><span>Start call</span><kbd id="homeCallKeys"></kbd></button>
@@ -180,7 +189,7 @@
 
         <section class="settings" id="menu" hidden>
           <div class="seg settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings">
-            <button role="tab" data-tab="interview">Calls</button>
+            <button role="tab" data-tab="calls">Calls</button>
             <button role="tab" data-tab="session">Call log</button>
             <button role="tab" data-tab="answers">AI Model</button>
             <button role="tab" data-tab="general">General</button>
@@ -239,7 +248,7 @@
             </div>
           </div>
 
-          <div class="tab" data-tab="interview" role="tabpanel" hidden>
+          <div class="tab" data-tab="calls" role="tabpanel" hidden>
             <h2>What you sell</h2>
             <div class="group">
               <button class="row link" id="jobBtn">
@@ -260,12 +269,12 @@
                 <div class="row-text"><span>Reply automatically</span><small id="autoAnswerHint">Shows your reply as soon as the prospect finishes talking, so you don't have to press Reply.</small></div>
                 <span class="switch" aria-hidden="true"></span>
               </button>
-              <button class="row" id="interviewToggle" role="switch">
+              <button class="row" id="salesToggle" role="switch">
                 <div class="row-text"><span>Sales replies</span><small>Your next line to say, from the brief. Turn off for calls that aren't sales, to get plain answers instead.</small></div>
                 <span class="switch" aria-hidden="true"></span>
               </button>
             </div>
-            <p class="tab-note" id="interviewOffNote" hidden>Sales replies are off: answers are plain, not lines to say, and there's no wrap-up after a call.</p>
+            <p class="tab-note" id="salesOffNote" hidden>Sales replies are off: answers are plain, not lines to say, and there's no wrap-up after a call.</p>
             <div class="callout" id="cloakWarn" hidden>
               <span>Dialpal shows up if you share your screen.</span>
               <button type="button" class="ghost" id="cloakFix">Hide it</button>

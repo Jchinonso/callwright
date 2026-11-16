@@ -12,6 +12,8 @@ A macOS call console for cold calling. Before the call it shows your brief and t
 
 - **Catches the pushback.** The other side of the call is transcribed on your Mac with NVIDIA's Parakeet speech model. Questions and common objections ("not interested", "send me an email", "we already use X", "no budget", "bad time", "who is this?") are flagged as they're said. Objections get a red tag.
 - **Your next line in seconds.** Press **Reply** (⌘↵), or let Dialpal reply on its own once the prospect stops talking. The reply is one or two spoken sentences in large type, then a **Then ask** question.
+- **You lead the call.** Start call shows your opener before the prospect says a word: who you are, what your company does for people like them, why you're calling, and a short permission ask. **Say next** gives your pitch and your ask for the meeting whenever you want them.
+- **Written for the person you're calling.** Type their name, company, role and what you know (their tools, a new hire, funding) under **Who are you calling?** and every line uses it. It's cleared after each saved call.
 - **Knows the call's stage.** Opener with a permission ask, pitch, discovery, objection, booking the meeting. Each stage gets a different kind of reply.
 - **Never makes things up.** Prices, features, customers and results come only from your product brief. If something isn't in it, the reply says you'll follow up, and a note tells you what's missing.
 - **Stays honest.** It never lies about who's calling or why, and never uses fake urgency. "Take me off your list" always gets a plain yes.
@@ -41,6 +43,8 @@ Disclosure line (if your state or company requires it): e.g. "Heads up, this cal
 ```
 
 At the start of each call block, Dialpal asks whether to keep the same brief.
+
+Add a **Lead source** line (how you found them) so "how did you get my number?" gets an honest answer, and your own **Opener** and **Pitch** if you have a script you like: Dialpal uses them nearly word for word.
 
 ## Consent and recording laws
 

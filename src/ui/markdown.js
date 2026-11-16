@@ -86,7 +86,7 @@ function renderMarkdown(src) {
     .join("");
 }
 
-// Interview answers carry a "Keys: a · b · c" line under the bold first line
+// Long answers may carry a "Keys: a · b · c" line under the bold first line
 // (same rule as splitKeys in assistant.js). Returns the answer without it.
 // streaming: the answer is still arriving, so a "Keys:" line being written
 // (the last line, no " · " yet) is hidden too instead of flashing as text.
