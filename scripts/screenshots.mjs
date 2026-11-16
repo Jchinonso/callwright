@@ -108,6 +108,9 @@ await run(`document.getElementById("onboardSkip").click();`);
 await until(`!onboarding`);
 await run(`await refreshHomeStats(); render();`);
 await shot("home");
+await run(`const b = state.productBrief; state.productBrief = ""; homeStats = null; render(); window.__b = b;`);
+await shot("home-no-brief");
+await run(`state.productBrief = window.__b; await refreshHomeStats(); render();`);
 await run(`askingJob = true; render();`);
 await shot("new-call-block");
 await run(`document.getElementById("jdSame").click();`);
@@ -125,6 +128,7 @@ await shot("question-heard");
 await run(`stillHearing = async () => false; document.getElementById("answerQBtn").click();`);
 await until(`answers.length && answers.at(-1).status === "done"`);
 await run(`state.listening = true; pendingQuestion = null; renderStrip(); document.getElementById("stage").scrollTop = 0;`);
+await run(`render();`);
 await shot("sales-reply");
 
 // End of the call: the wrap-up screen.

@@ -1133,3 +1133,24 @@ body.idle .listen, body.wrapping .listen { display: none; }
 body.wrapping .dock { display: none; }
 .home .guide { display: none; }
 body.no-dock .dock { display: none; }
+
+/* Screen-share status: hidden is the quiet default; visible is said in red,
+   in words, because it matters most during a demo. */
+.cloak-label { display: none; font-size: 12px; font-weight: 600; }
+.cloak[aria-pressed="false"] { width: auto; gap: 5px; padding: 0 9px 0 7px; color: var(--alert); background: color-mix(in srgb, var(--alert) 12%, transparent); }
+.cloak[aria-pressed="false"] .cloak-label { display: inline; }
+.cloak[aria-pressed="false"]:hover { background: color-mix(in srgb, var(--alert) 20%, transparent); }
+
+/* Home: no screenshots before a call; one quiet line of keys. */
+body.idle #shotBtn, body.wrapping #shotBtn { display: none; }
+.home-keys { margin: 12px 0 0; color: var(--faint); font-size: 12px; }
+.ghost.big { flex: none; }
+.home-actions .ghost.big#homeCall { flex: none; display: inline-flex; align-items: center; gap: 8px; }
+.home-actions .ghost.big#homeCall kbd { font: 500 12px var(--ui); opacity: 0.6; }
+.ob-you { grid-template-columns: 1fr 1fr 1fr; }
+.cloak[aria-pressed="false"] { display: inline-flex; align-items: center; border-radius: 999px; }
+.chips { flex-direction: column; align-items: stretch; gap: 6px; }
+.chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.chips-label { min-width: 62px; }
+.chip.say { border-color: color-mix(in srgb, var(--ice) 40%, transparent); color: var(--ice); }
+.chip.say:hover { background: color-mix(in srgb, var(--ice) 12%, transparent); border-color: var(--ice); }

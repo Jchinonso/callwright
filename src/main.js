@@ -71,7 +71,7 @@ const defaults = { provider: "anthropic", model: DEFAULT_ANTHROPIC_MODEL, openai
   // Setup: onboarded once the welcome and setup steps are done or skipped.
   // Your details go with every question like About you. jdCheckedAt: when the
   // product brief was last confirmed for a call session (ms; 0 = ask again).
-  onboarded: false, profileName: "", salary: "", visa: "", notice: "", jdCheckedAt: 0,
+  onboarded: false, profileName: "", profileCompany: "", profileRole: "", salary: "", visa: "", notice: "", jdCheckedAt: 0,
   // Long answers open as key points instead of in full.
   compactAnswers: false,
   // Sales mode, while listening: reply once the prospect finishes their turn.
@@ -99,8 +99,9 @@ const CONFIG_MIGRATIONS = [
     delete settings.modelDefaultMoved; // written by one 1.2.4 test build
   },
 ];
-const PROFILE_FIELDS = ["profileName", "salary", "visa", "notice"];
-const profile = () => ({ name: config.profileName, salary: config.salary, visa: config.visa, notice: config.notice });
+// You: the rep's name, company and role, for openers and "who is this?".
+const PROFILE_FIELDS = ["profileName", "profileCompany", "profileRole"];
+const profile = () => ({ name: config.profileName, company: config.profileCompany, role: config.profileRole });
 // About you and the product brief are sent word for word (never compressed),
 // so answers can use their exact wording.
 const MAX_DOC = 20000;
@@ -529,6 +530,8 @@ function state() {
     maxDoc: MAX_DOC,
     onboarded: config.onboarded,
     profileName: config.profileName,
+    profileCompany: config.profileCompany,
+    profileRole: config.profileRole,
     salary: config.salary,
     visa: config.visa,
     notice: config.notice,
@@ -1351,9 +1354,24 @@ async function toggleListening() {
     listening = true;
     listeningSince = Date.now();
     prewarmAnswers();
+    // A sales call starts with the rep talking: show the opener right away,
+    // before the prospect says a word.
+    if (config.style === "sales" && !practice.active && canAsk() && !transcript.length && !answers.length) {
+      broadcastState();
+      return void runAsk(SAY_NEXT.opener, { heard: true });
+    }
   }
   broadcastState();
 }
+
+// What the rep asks for, rather than what the prospect said (the "Say next"
+// buttons and the automatic opener). The Sales prompt treats these as
+// requests addressed to it.
+const SAY_NEXT = {
+  opener: "Rep asks: the call just connected. Give my opener now.",
+  pitch: "Rep asks: give my pitch now.",
+  close: "Rep asks: give my ask for the meeting now.",
+};
 
 // Listened for in every call: the model already knows most of these, and
 // the boost keeps them spelled this way. The user's words come first.
@@ -1517,6 +1535,7 @@ ipcMain.handle("pause-shortcuts", (_e, paused) => {
 });
 
 ipcMain.handle("get-state", () => ({ ...state(), transcript: transcript.slice(-TRANSCRIPT_SYNC) }));
+ipcMain.handle("say-next", (_e, kind) => Object.hasOwn(SAY_NEXT, kind) && runAsk(SAY_NEXT[kind], { heard: true }));
 ipcMain.handle("ask", (_e, question, options) => runAsk(question, { heard: !!options?.heard, heardAt: options?.heardAt ?? null, hard: !!options?.hard, deep: !!options?.deep, gated: !!options?.gated }));
 // Reads a resume or job description file for the form to show; nothing is
 // saved until the user presses Save there.

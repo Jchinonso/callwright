@@ -358,7 +358,7 @@ test("settings: every tab, and each form goes back to the tab it came from", { s
   }
   await click('#settingsTabs [data-tab="interview"]');
 
-  await click("#resumeBtn");
+  await click("#jobBtn");
   assert.ok(await shown("docForm"));
   assert.ok(await run(`return document.querySelector(".dock").hidden;`), "the question box hides behind forms");
   await click("#docForm [data-back]");
@@ -1306,6 +1306,20 @@ test("call console: home before a call, objection chips during it, the wrap-up a
   await run(`await g.clear(); await g.setSetting("style", "sales"); await g.setSetting("productBrief", "Product: Ledgerly, AP automation.\\nProof: Brightline cut processing time 62%."); setMenu(false);`);
   await until(`state.style === "sales" && !state.listening`);
   await run(`answers = []; page = -1; wrapOpen = false; render();`);
+  // Home with no brief: adding one is the big button; Start call steps back.
+  await run(`await g.setSetting("productBrief", "");`);
+  await until(`!state.productBrief`);
+  await run(`render();`);
+  assert.ok(await shown("homeAddBrief"));
+  assert.ok(!(await shown("homeBrief")));
+  assert.ok(await run(`return document.getElementById("homeCall").classList.contains("ghost");`));
+  assert.match(await run(`return document.getElementById("homeTop").textContent;`), /Add a brief/);
+  assert.equal(await run(`return getComputedStyle(document.getElementById("shotBtn")).display;`), "none", "no screenshots on home");
+  await run(`await g.setSetting("productBrief", "Product: Ledgerly, AP automation.\\nProof: Brightline cut processing time 62%.");`);
+  await until(`!!state.productBrief`);
+  await run(`render();`);
+  assert.ok(!(await shown("homeAddBrief")));
+  assert.ok(await run(`return document.getElementById("homeCall").classList.contains("primary");`));
   // Home: the brief's first line, Start call, no question box.
   assert.ok(await shown("welcome"));
   assert.equal(await run(`return document.getElementById("homeBriefText").textContent;`), "Ledgerly, AP automation.");
@@ -1328,6 +1342,13 @@ test("call console: home before a call, objection chips during it, the wrap-up a
   await run(`document.querySelector('#chips [data-line^="Just send me"]').click();`);
   await until(`answers.length === 1 && answers[0].status === "done"`);
   assert.match(requests.slice(before).find((r) => r.stream).messages[1].content.at(-1).text, /Prospect said \(or rep typed\): Just send me an email\./);
+  // Say next: the rep asks for the pitch; it's sent as the rep's request.
+  const sayBefore = requests.length;
+  await run(`document.querySelector('#chips [data-next="pitch"]').click();`);
+  await until(`answers.length === 2 && answers[1].status === "done"`);
+  assert.match(requests.slice(sayBefore).find((r) => r.stream).messages[1].content.at(-1).text, /Rep asks: give my pitch now\./);
+  assert.equal(await run(`return document.querySelectorAll('#chips [data-next]').length;`), 3);
+  await run(`answers = answers.slice(0, 1); page = 0;`);
   // A reply's Stage line becomes the stage chip and never shows in the cue.
   await run(`answers[0].text = "**Happy to. What should it cover?**\\n\\nStage: objection"; state.listening = true; render();`);
   assert.equal(await run(`return document.getElementById("stageChip").textContent;`), "Objection");
@@ -1373,6 +1394,20 @@ test("ending a sales call with the prospect heard opens the wrap-up; nothing hea
   await sleep(100);
   assert.equal(await run(`return wrapOpen;`), false);
   assert.ok(await shown("welcome"));
+});
+
+test("Start call shows the opener before the prospect says anything", { skip }, async () => {
+  await run(`await g.clear(); await g.setSetting("style", "sales"); answers = []; page = -1; wrapOpen = false; render();`);
+  await until(`state.style === "sales" && state.transcriptCount === 0`);
+  const before = requests.length;
+  await click("#homeCall");
+  await until(`answers.length === 1`, 6000);
+  const opener = requests.slice(before).find((r) => r.stream);
+  assert.match(opener.messages[1].content.at(-1).text, /Rep asks: the call just connected\. Give my opener now\./);
+  if (await run(`return state.listening;`)) await run(`await g.toggleListening();`);
+  await until(`!state.listening`);
+  await run(`if (wrapOpen) document.getElementById("wrapSkip").click();`);
+  await until(`!wrapOpen`);
 });
 
 test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {

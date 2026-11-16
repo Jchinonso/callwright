@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("dialpal", {
   },
   getState: () => ipcRenderer.invoke("get-state"),
   ask: (question, options) => ipcRenderer.invoke("ask", question, options),
+  sayNext: (kind) => ipcRenderer.invoke("say-next", kind),
   cancel: () => ipcRenderer.invoke("cancel"),
   stillHearing: () => ipcRenderer.invoke("still-hearing"),
   setSaid: (id, text) => ipcRenderer.invoke("set-said", id, text),

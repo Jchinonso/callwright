@@ -205,7 +205,7 @@ function renderMenu() {
   $("compactToggle").setAttribute("aria-checked", String(!!state.compactAnswers));
   $("autoAnswerToggle").setAttribute("aria-checked", String(!!state.autoAnswer));
   $("autoAnswerHint").textContent = state.style === "sales"
-    ? "While listening, shows your reply as soon as the prospect finishes talking, so you don't have to press Answer."
+    ? "Shows your reply as soon as the prospect finishes talking, so you don't have to press Reply."
     : "Only works in Sales mode, which is off. Switch with the menu beside the question box.";
   $("hubspotMeta").textContent = state.hubspotEnabled ? `On · token ending ${state.hubspotHint}` : state.hubspotHint ? "Off · token saved" : "Log each saved call to HubSpot";
   const sp = state.spend || { input: 0, output: 0, dollars: 0 };
@@ -222,8 +222,8 @@ function renderMenu() {
   $("instructionsMeta").textContent = state.customInstructions?.trim() ? "on" : "none";
   $("instructionsResumeWarn").hidden = !looksLikeResume(state.customInstructions);
   $("resumeMeta").textContent = docMeta(state.resume);
-  const filled = [state.profileName, state.salary, state.visa, state.notice].filter((v) => v?.trim()).length;
-  $("profileMeta").textContent = filled ? `${filled} of 4` : "not added";
+  const you = [state.profileName, state.profileCompany].map((v) => v?.trim()).filter(Boolean).join(", ");
+  $("profileMeta").textContent = you || "not added";
   $("jobMeta").textContent = docMeta(state.productBrief);
   const providerLabel = (state.providers || []).find((p) => p.id === state.provider)?.label || "Anthropic";
   $("keyMeta").textContent = state.keyFromEnv ? `${providerLabel}, key from ${state.keyFromEnv}` : state.keyHint ? `${providerLabel}, key ends in ${state.keyHint}` : state.hasKey ? providerLabel : `${providerLabel}, no key yet`;
@@ -377,7 +377,7 @@ function renderStage() {
   // After the first answer, the full guide shrinks to one line of hints.
   const guided = hasSeenAnswer();
   $("guide").hidden = guided;
-  $("hints").hidden = !guided && !home; // home shows the one-line hints, not the full guide
+  $("hints").hidden = !guided || home; // home has its own one-line keys
 
   const a = answers[page];
   if (a && !$("answer").hidden) {
@@ -1550,13 +1550,16 @@ const DOCS = {
   productBrief: {
     lead: "Product brief",
     hint: "Everything replies may say about what you sell. Sent word for word. Replies never claim a price, feature or customer that isn't here. Import a file or paste it.",
-    placeholder: `Product: what it is, in one line
+    placeholder: `Company: who you are and what you do, in one line
+Product: what you're offering, in one line
 Who it's for: ideal customer, roles, company size
 Problem it solves:
 Proof: customers, results with numbers
 Pricing: what you can say on a call
 Competitors: who they use today, how you differ
 Meeting to book: e.g. 20-minute demo with an AE
+Opener (optional, your own words): e.g. "Hi Dana, it's Sam from Ledgerly. We automate invoice matching for finance teams. Got 30 seconds?"
+Pitch (optional, your own words):
 Disclosure line (if your state or company requires it): e.g. "Heads up, this call is transcribed."`,
   },
 };
@@ -1836,6 +1839,8 @@ function startOnboarding(step = "welcome") {
   $("obResume").value = state.resume || "";
   $("obJob").value = state.productBrief || "";
   $("obName").value = state.profileName || "";
+  $("obCompany").value = state.profileCompany || "";
+  $("obRole").value = state.profileRole || "";
   $("obSalary").value = state.salary || "";
   $("obVisa").value = state.visa || "";
   $("obNotice").value = state.notice || "";
@@ -1901,7 +1906,7 @@ function saveStep() {
   if (step === "about") {
     const resume = $("obResume").value;
     if (resume !== (state.resume || "")) g.setSetting("resume", resume);
-    for (const [id, name] of [["obName", "profileName"], ["obSalary", "salary"], ["obVisa", "visa"], ["obNotice", "notice"]]) {
+    for (const [id, name] of [["obName", "profileName"], ["obCompany", "profileCompany"], ["obRole", "profileRole"]]) {
       const v = $(id).value.trim();
       if (v !== (state[name] || "")) g.setSetting(name, v);
     }
@@ -2007,18 +2012,16 @@ $("jdNew").addEventListener("click", () => {
   openDoc("productBrief"); // saving the brief confirms it for this call block
 });
 
-// Your details (Settings > Sales).
+// You: name, company and role (Settings › Calls).
+const YOU_FIELDS = [["pfName", "profileName"], ["pfCompany", "profileCompany"], ["pfRole", "profileRole"]];
 $("profileBtn").addEventListener("click", () => {
-  $("pfName").value = state.profileName || "";
-  $("pfSalary").value = state.salary || "";
-  $("pfVisa").value = state.visa || "";
-  $("pfNotice").value = state.notice || "";
+  for (const [id, name] of YOU_FIELDS) $(id).value = state[name] || "";
   openPanel("profile");
   $("pfName").focus();
 });
 $("profileForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  for (const [id, name] of [["pfName", "profileName"], ["pfSalary", "salary"], ["pfVisa", "visa"], ["pfNotice", "notice"]]) {
+  for (const [id, name] of YOU_FIELDS) {
     const v = $(id).value.trim();
     if (v !== (state[name] || "")) g.setSetting(name, v);
   }
@@ -2261,14 +2264,22 @@ function briefTitle() {
 }
 function renderHome() {
   const title = briefTitle();
-  $("homeBriefText").textContent = title || "No product brief yet. Add one so replies know what you sell.";
-  $("homeBrief").classList.toggle("missing", !title);
-  $("homeBriefEdit").textContent = title ? "Edit" : "Add";
+  // No brief yet: adding one is the first job, so it takes the big button
+  // and Start call steps back until there is one.
+  $("homeBrief").hidden = !title;
+  $("homeBriefText").textContent = title;
+  $("homeAddBrief").hidden = !!title;
+  $("homeCall").classList.toggle("primary", !!title);
+  $("homeCall").classList.toggle("ghost", !title);
   $("homeCall").disabled = !state.hasKey;
   $("homeCallKeys").textContent = plainKeys(state.shortcuts?.listen || "");
+  const k = state.shortcuts || {};
+  $("homeKeys").textContent = [k.ask && `${plainKeys(k.ask)} reply`, k.toggleWindow && `${plainKeys(k.toggleWindow)} show or hide`].filter(Boolean).join(" · ");
   const st = homeStats;
-  $("homeToday").hidden = !st || (!st.calls && !st.practice?.sessions);
-  if (st) {
+  const empty = !st || (!st.calls && !st.practice?.sessions);
+  $("homeNumbers").hidden = empty;
+  if (empty) $("homeTop").textContent = title ? "Your numbers show up here after your first saved call." : "Add a brief, make a call, and your numbers show up here.";
+  if (st && !empty) {
     const pct = st.today.calls ? `${Math.round((100 * st.today.booked) / st.today.calls)}%` : "–";
     $("homeNumbers").innerHTML = [
       [st.today.calls, st.today.calls === 1 ? "call today" : "calls today"],
@@ -2289,10 +2300,16 @@ async function refreshHomeStats() {
 }
 refreshHomeStats();
 $("homeBrief").addEventListener("click", () => openDoc("productBrief"));
+$("homeAddBrief").addEventListener("click", () => openDoc("productBrief"));
 $("homeCall").addEventListener("click", () => g.toggleListening());
 $("homePractice").addEventListener("click", () => openPanel("practice"));
 
 $("chips").addEventListener("click", (e) => {
+  const next = e.target.closest("[data-next]")?.dataset.next;
+  if (next) {
+    pendingQuestion = null;
+    return g.sayNext(next);
+  }
   const line = e.target.closest("[data-line]")?.dataset.line;
   if (!line) return;
   pendingQuestion = null;

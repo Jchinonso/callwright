@@ -57,8 +57,8 @@ test("every answer style and the notes prompt use the human voice", async () => 
 });
 
 test("your details from setup go with every question", () => {
-  const p = systemPrompt("brief", "", "", "", { name: "Johnson" });
-  assert.ok(p.includes("<user_details>\nName: Johnson\n</user_details>"));
+  const p = systemPrompt("brief", "", "", "", { name: "Johnson", company: "Ledgerly", role: "" });
+  assert.ok(p.includes("<user_details>\nName: Johnson\nCompany: Ledgerly\n</user_details>"));
   assert.ok(!systemPrompt("brief", "", "", "", {}).includes("<user_details>"));
 });
 
@@ -130,4 +130,12 @@ test("sales replies end with a Stage line: read for the console, dropped everywh
   assert.equal(takeStage("The stage: was set").stage, null);
   assert.equal(splitKeys("**Yes.**\n\nStage: close").text, "**Yes.**", "previous answers and notes never carry it");
   assert.match(systemPrompt("sales", "", "", ""), /Last line always: "Stage: "/);
+});
+
+test("the rep drives the call: opener, pitch and the meeting ask on request, the rep's own script used", () => {
+  const p = systemPrompt("sales", "", "", "");
+  assert.match(p, /"Rep asks: … opener": give the opener: .*what the company does in one plain line/);
+  assert.match(p, /"Rep asks: … pitch": the pitch now/);
+  assert.match(p, /"Rep asks: … ask for the meeting"/);
+  assert.match(p, /rep's own opener or pitch written out: use it nearly word for word/);
 });
