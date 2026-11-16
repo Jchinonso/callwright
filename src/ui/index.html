@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:" />
+    <title>Dialpal</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="glass" id="glass">
+      <div class="rim" aria-hidden="true"></div>
+
+      <header class="bar">
+        <div class="grip" title="Drag to move">
+          <span class="mark">dialpal</span>
+        </div>
+        <div class="actions">
+          <button class="pill listen" id="listenBtn" title="Listen to your call so answers can use what's said (⌘⇧\)">
+            <span class="pulse" aria-hidden="true"></span>
+            <span class="label idle-label">Listen</span>
+            <span class="label live-label">Listening</span>
+            <span class="label stop-label">Stop</span>
+            <span class="timer" id="timer"></span>
+          </button>
+          <button class="pill" id="shotBtn" title="Screenshot your screen and answer it (⌘⇧2). Shift-click or ⌘⇧1 to collect several first.">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h2l1.2-1.6h4.6L13.5 5h2A1.5 1.5 0 0 1 17 6.5v8A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5Z" /><circle cx="10" cy="10.5" r="3" /></svg>
+            <span class="label">Screenshot</span>
+            <span class="count" id="shotCount" hidden></span>
+          </button>
+          <button class="icon cloak" id="cloakBtn" aria-pressed="true">
+            <svg class="eye-off" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z" /><circle cx="10" cy="10" r="2.2" /><path d="M3 17 17 3" /></svg>
+            <svg class="eye-on" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z" /><circle cx="10" cy="10" r="2.2" /></svg>
+          </button>
+          <button class="icon" id="collapseBtn" title="Collapse to the top bar" aria-pressed="false">
+            <svg class="chev-up" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>
+            <svg class="chev-down" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" /></svg>
+          </button>
+          <button class="icon" id="menuBtn" title="Settings" aria-expanded="false">
+            <svg class="gear" viewBox="0 0 20 20" aria-hidden="true"><path d="M17.878 8.611A8 8 0 0 1 17.878 11.389L16.113 11.524A6.3 6.3 0 0 1 15.4 13.245L16.553 14.589A8 8 0 0 1 14.589 16.553L13.245 15.4A6.3 6.3 0 0 1 11.524 16.113L11.389 17.878A8 8 0 0 1 8.611 17.878L8.476 16.113A6.3 6.3 0 0 1 6.755 15.4L5.411 16.553A8 8 0 0 1 3.447 14.589L4.6 13.245A6.3 6.3 0 0 1 3.887 11.524L2.122 11.389A8 8 0 0 1 2.122 8.611L3.887 8.476A6.3 6.3 0 0 1 4.6 6.755L3.447 5.411A8 8 0 0 1 5.411 3.447L6.755 4.6A6.3 6.3 0 0 1 8.476 3.887L8.611 2.122A8 8 0 0 1 11.389 2.122L11.524 3.887A6.3 6.3 0 0 1 13.245 4.6L14.589 3.447A8 8 0 0 1 16.553 5.411L15.4 6.755A6.3 6.3 0 0 1 16.113 8.476ZM12.4 10A2.4 2.4 0 1 1 7.6 10A2.4 2.4 0 1 1 12.4 10Z" /></svg>
+          </button>
+          <button class="icon" id="hideTopBtn" title="Hide Dialpal (⌘\). Bring it back from the menu bar icon.">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" /></svg>
+          </button>
+          <button class="icon close" id="quitTopBtn" title="Quit Dialpal" aria-label="Quit Dialpal">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="updatebar" id="updateBar" hidden>
+        <div class="updatebar-box" id="updateBox">
+          <span id="updateText" role="status"></span>
+          <span class="updatebar-actions">
+            <button type="button" class="textlink" id="updateLater">Later</button>
+            <button type="button" class="textlink" id="updatePage" hidden>Download page</button>
+            <button type="button" class="ghost small" id="updateBtn">Update</button>
+          </span>
+        </div>
+      </div>
+
+      <p class="caption" id="caption" hidden></p>
+
+      <main class="stage" id="stage">
+        <section class="onboard" id="onboard" hidden>
+          <div class="onboard-head" id="onboardHead">
+            <span class="step-label" id="onboardStepLabel"></span>
+          </div>
+          <div class="ob-step" data-step="welcome">
+            <h1 class="ob-title">Your next line, while they're still talking</h1>
+            <p class="ob-lead">Dialpal sits on top of your screen during sales calls. When the prospect talks, it shows you the next line to say.</p>
+            <dl class="ob-features">
+              <dt>It catches the pushback</dt>
+              <dd>Dialpal follows the call on your Mac and flags questions and objections as the prospect says them.</dd>
+              <dt>Your next line in seconds</dt>
+              <dd>One sentence to say and one question to ask, built from what they said and your product brief.</dd>
+              <dt>It never makes things up</dt>
+              <dd>Prices, features and customers come only from your brief. Transcription stays on your Mac.</dd>
+            </dl>
+            <p class="hint">Setup takes about a minute, and you can change everything later in Settings.</p>
+          </div>
+          <div class="ob-step" data-step="speech">
+            <h1 class="ob-title">Download the speech model</h1>
+            <p class="ob-lead" id="obSpeechLead">Dialpal needs this to transcribe calls. This one-time download is about 660 MB.</p>
+            <div class="ob-progress" id="obSpeechProgress">
+              <div class="ob-progress-bar"><span id="obSpeechFill"></span></div>
+              <span class="ob-progress-label" id="obSpeechMeta"></span>
+            </div>
+            <p class="hint caution" id="obSpeechError" hidden></p>
+            <button type="button" class="ghost small" id="obSpeechRetry" hidden>Try again</button>
+            <p class="ob-lead" id="obSpeechDone" hidden>Speech model installed</p>
+          </div>
+          <div class="ob-step" data-step="about">
+            <p class="lead">About you</p>
+            <p class="hint" id="obAboutHint">So replies sound like you. Change it later in Settings &gt; Sales.</p>
+            <span class="ob-label">What will you use Dialpal for?</span>
+            <div class="seg" id="obUse" role="radiogroup">
+              <button type="button" role="radio" data-value="sales">Sales calls</button>
+              <button type="button" role="radio" data-value="meetings">Meetings</button>
+              <button type="button" role="radio" data-value="both">Both</button>
+            </div>
+            <div class="ob-labelrow">
+              <span class="ob-label">About you <small id="obResumeNeed"></small> <small id="obResumeMeta"></small></span>
+              <button type="button" class="ghost small" id="obResumeImport">Import file…</button>
+            </div>
+            <textarea id="obResume" rows="4" maxlength="20000" spellcheck="true" placeholder="Your name, company, role, and anything a prospect might ask about you"></textarea>
+            <div class="ob-grid">
+              <label>Name<input id="obName" maxlength="200" autocomplete="off" /></label>
+              <label hidden>Salary range<input id="obSalary" maxlength="200" placeholder="e.g. $140k to $160k" autocomplete="off" /></label>
+              <label hidden>Visa status<input id="obVisa" maxlength="200" placeholder="e.g. Needs sponsorship" autocomplete="off" /></label>
+              <label hidden>Notice period<input id="obNotice" maxlength="200" placeholder="e.g. 4 weeks" autocomplete="off" /></label>
+            </div>
+          </div>
+          <div class="ob-step" data-step="job">
+            <p class="lead">What you sell</p>
+            <p class="hint">Paste your product brief or import it. Replies only claim what's in it. Dialpal asks again at the start of each new call block.</p>
+            <div class="ob-labelrow">
+              <span class="ob-label">Product brief</span>
+              <button type="button" class="ghost small" id="obJobImport">Import file…</button>
+            </div>
+            <textarea id="obJob" rows="8" maxlength="20000" spellcheck="true" placeholder="Product, who it's for, proof, pricing, competitors, the meeting to book, any disclosure line"></textarea>
+          </div>
+          <div class="ob-step" data-step="ready">
+            <p class="lead">You're set</p>
+            <div class="group">
+              <button type="button" class="row" id="obCloak" role="switch">
+                <div class="row-text"><span>Hide from screen sharing</span><small>Keeps Dialpal out of what the other side sees if you share your screen, and out of the Dock</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+            <ul class="ob-points">
+              <li>When the call starts, press <strong>Listen</strong> (<span id="obListenKey"></span>). macOS asks for screen and audio access the first time: allow it, then reopen Dialpal once, since macOS only sends audio after a reopen.</li>
+              <li>In Sales mode, Dialpal shows your reply on its own once the prospect finishes talking. Any time, you can press <strong>Answer</strong> (<span id="obAskKey"></span>) or type a question.</li>
+              <li>Everything here lives in Settings, the gear at the top.</li>
+            </ul>
+          </div>
+          <div class="formrow ob-nav">
+            <button type="button" class="ghost" id="obBack">Back</button>
+            <button type="button" class="textlink" id="onboardSkip">Skip setup</button>
+            <button type="button" class="primary" id="obNext">Get started</button>
+          </div>
+        </section>
+
+        <div class="callout jd-card" id="jdCard" hidden>
+          <div class="jd-main">
+            <span id="jdText">New call block? Keep the same product brief, or change it.</span>
+            <span class="callout-actions">
+              <button type="button" class="ghost" id="jdSame">Same role</button>
+              <button type="button" class="ghost" id="jdNew">Edit brief</button>
+            </span>
+          </div>
+          <div class="jd-cloak" id="jdCloak" hidden>
+            <span>Dialpal is visible when you share your screen.</span>
+            <button type="button" class="textlink" id="jdCloakFix">Hide it</button>
+          </div>
+        </div>
+
+        <section class="welcome" id="welcome">
+          <ul class="guide" id="guide"></ul>
+          <p class="hints" id="hints" hidden></p>
+        </section>
+
+        <section class="settings" id="menu" hidden>
+          <div class="seg settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings">
+            <button role="tab" data-tab="answers">AI Model</button>
+            <button role="tab" data-tab="interview">Sales</button>
+            <button role="tab" data-tab="session">Session</button>
+            <button role="tab" data-tab="general">General</button>
+            <button role="tab" data-tab="about">About</button>
+          </div>
+
+          <div class="tab" data-tab="answers" role="tabpanel">
+            <h2>Who answers</h2>
+            <div class="group">
+              <button class="row link" id="keyBtn">
+                <div class="row-text"><span>AI provider</span><small>Anthropic, OpenAI or any compatible service, and its API key</small></div>
+                <span class="row-meta"><span id="keyMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <div class="row model-row" id="modelRow">
+                <div class="row-text"><span>Model</span><small id="modelHint"></small></div>
+                <div class="model-picker">
+                  <div class="combo combo-compact">
+                    <input id="settingsModel" role="combobox" aria-expanded="false" aria-controls="settingsModelList" aria-autocomplete="list" aria-label="Model" autocomplete="off" spellcheck="false" />
+                    <button type="button" class="combo-toggle" id="settingsModelToggle" tabindex="-1" aria-label="Show all models"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8 10 12.5 14.5 8" /></svg></button>
+                  </div>
+                  <button type="button" class="textlink" id="refreshModelsBtn">Refresh</button>
+                </div>
+                <ul class="combo-list model-row-list" id="settingsModelList" role="listbox" hidden></ul>
+              </div>
+              <div class="row" id="effortRow">
+                <div class="row-text"><span>Depth</span><small>Spoken questions use Quick unless they look hard. Hard, typed and screen questions use Depth; on OpenAI-compatible servers it is sent as the reasoning level (models that don't reason ignore it).</small></div>
+                <div class="seg" id="effort" role="radiogroup">
+                  <button role="radio" data-value="low">Quick</button>
+                  <button role="radio" data-value="medium">Balanced</button>
+                  <button role="radio" data-value="high">Thorough</button>
+                </div>
+              </div>
+            </div>
+
+            <h2>How it answers</h2>
+            <div class="group">
+              <div class="row">
+                <div class="row-text"><span>Meeting style</span><small id="styleHint"></small></div>
+                <div class="seg" id="style" role="radiogroup">
+                  <button role="radio" data-value="natural">Natural</button>
+                  <button role="radio" data-value="brief">Brief</button>
+                </div>
+              </div>
+              <button class="row link" id="instructionsBtn">
+                <div class="row-text"><span>Custom instructions</span><small>Your own rules, added to every question</small><small class="caution" id="instructionsResumeWarn" hidden>This looks like a resume. Move it to Sales &gt; About you so its wording isn't compressed.</small></div>
+                <span class="row-meta"><span id="instructionsMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row" id="autoScreenToggle" role="switch">
+                <div class="row-text"><span>Screenshot every question</span><small>For typed questions. Heard questions get one only when they mention the screen.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+              <button class="row" id="openAtLoginToggle" role="switch">
+                <div class="row-text"><span>Start Dialpal when I log in</span><small>Loads Dialpal silently at login so it's ready before any other app starts.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="tab" data-tab="interview" role="tabpanel" hidden>
+            <div class="group">
+              <button class="row" id="interviewToggle" role="switch">
+                <div class="row-text"><span>Sales mode</span><small>Replies come back as the next line to say, built from your product brief.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+              <button class="row" id="autoAnswerToggle" role="switch">
+                <div class="row-text"><span>Reply automatically</span><small id="autoAnswerHint">While listening, shows your reply as soon as the prospect finishes talking, so you don't have to press Answer.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+              <button class="row" id="compactToggle" role="switch">
+                <div class="row-text"><span>Open answers as key points</span><small>Shows the first line and 3-4 key phrases to glance at while you talk. Full answer shows the rest.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+            <div class="callout" id="cloakWarn" hidden>
+              <span>Dialpal shows up if you share your screen.</span>
+              <button type="button" class="ghost" id="cloakFix">Hide it</button>
+            </div>
+            <h2>About you and the role</h2>
+            <div class="group">
+              <button class="row link" id="resumeBtn">
+                <div class="row-text"><span>About you</span><small>Your name, company and role, used in openers and when asked who's calling</small></div>
+                <span class="row-meta"><span id="resumeMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="profileBtn">
+                <div class="row-text"><span>Your details</span><small>Your name</small></div>
+                <span class="row-meta"><span id="profileMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="jobBtn">
+                <div class="row-text"><span>Product brief</span><small>The only source for product facts, prices and the meeting to book</small></div>
+                <span class="row-meta"><span id="jobMeta"></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+            </div>
+            <p class="tab-note" id="interviewOffNote" hidden>Sales mode is off: questions about you or the product still use these, but answers aren't written as lines to say.</p>
+          </div>
+
+          <div class="tab" data-tab="session" role="tabpanel" hidden>
+            <div class="group">
+              <div class="row">
+                <div class="row-text"><span>Spent this session</span><small id="spendMeta">Nothing spent yet</small></div>
+                <span class="row-meta" id="spendTotal"></span>
+              </div>
+              <button class="row link" id="transcriptToggle">
+                <div class="row-text"><span>Transcript</span><small id="transcriptMeta">What Dialpal has heard so far</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="saveNotesBtn">
+                <div class="row-text"><span>Save notes</span><small id="saveNotesMeta">Summary, decisions, action items and full transcript, to Documents/Dialpal</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12" /></svg></span>
+              </button>
+              <button class="row link" id="clearBtn">
+                <div class="row-text"><span>Clear session</span><small>Forget the transcript, answers and screenshots</small></div>
+              </button>
+            </div>
+          </div>
+
+          <div class="tab" data-tab="general" role="tabpanel" hidden>
+            <h2>Listening</h2>
+            <div class="group">
+              <div class="row">
+                <div class="row-text"><span>Speech</span><small id="speechHint">Parakeet (on this Mac)</small></div>
+              </div>
+              <div class="row-note" id="speechStatus" hidden>
+                <span id="speechStatusText"></span>
+                <button type="button" class="textlink" id="speechRetry" hidden>Try again</button>
+              </div>
+              <div class="row">
+                <div class="row-text"><span>Appearance</span><small>Follow macOS, or always light or dark</small></div>
+                <div class="seg" id="theme" role="radiogroup">
+                  <button role="radio" data-value="system">System</button>
+                  <button role="radio" data-value="light">Light</button>
+                  <button role="radio" data-value="dark">Dark</button>
+                </div>
+              </div>
+              <label class="row stacked" for="vocabularyInput">
+                <div class="row-text"><span>Words to recognize</span><small>Names, products and jargon Dialpal should listen for, separated by commas</small></div>
+                <input id="vocabularyInput" maxlength="500" placeholder="e.g. Priya, Ledgerly, pgvector" spellcheck="false" />
+              </label>
+            </div>
+
+            <h2>Privacy</h2>
+            <div class="group">
+              <button class="row" id="cloakToggle" role="switch">
+                <div class="row-text"><span>Hide from screen sharing</span><small>Leaves Dialpal out of shares, recordings, screenshots and the Dock (⌘⇧H). Off: Dialpal shows in the Dock.</small></div>
+                <span class="switch" aria-hidden="true"></span>
+              </button>
+            </div>
+
+            <h2>Keyboard</h2>
+            <div class="group">
+              <button class="row link" id="welcomeAgainBtn">
+                <div class="row-text"><span>Show welcome again</span><small>Run the welcome and setup steps again</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+              <button class="row link" id="shortcutsBtn">
+                <div class="row-text"><span>Shortcuts</span><small>Change the keys Dialpal listens for anywhere</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+            </div>
+
+            <h2>Your data</h2>
+            <div class="group">
+              <button class="row link" id="wipeBtn">
+                <div class="row-text"><span>Delete all Dialpal data</span><small>API keys, settings, product brief, details and logs. Do this before uninstalling.</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
+              </button>
+            </div>
+
+            <div class="settings-foot">
+              <button class="ghost danger" id="quitBtn">Quit Dialpal</button>
+            </div>
+          </div>
+
+          <div class="tab" data-tab="about" role="tabpanel" hidden>
+            <div class="group">
+              <div class="row">
+                <img class="about-logo" src="logo.png" alt="" width="40" height="40" />
+                <div class="row-text about-text"><span>Dialpal</span><small>Listens to your sales calls and shows you the next line to say.</small></div>
+                <span class="row-meta" id="aboutVersion"></span>
+              </div>
+              <button class="row link" id="updateCheckBtn">
+                <div class="row-text"><span id="updateCheckTitle">Check for updates</span><small id="updateCheckMeta" role="status"></small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 4v3.5h-3.5" /></svg></span>
+              </button>
+            </div>
+
+            <h2>More</h2>
+            <div class="group">
+              <button class="row link" data-link="releases">
+                <div class="row-text"><span>What's new</span><small>Release notes for this and earlier versions</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h7v7M15 5l-9.5 9.5" /></svg></span>
+              </button>
+              <button class="row link" data-link="help">
+                <div class="row-text"><span>Help</span><small>The guide: setup, providers, models, troubleshooting</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h7v7M15 5l-9.5 9.5" /></svg></span>
+              </button>
+              <button class="row link" data-link="issues">
+                <div class="row-text"><span>Report a problem</span><small>Opens the issue tracker on GitHub</small></div>
+                <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5h7v7M15 5l-9.5 9.5" /></svg></span>
+              </button>
+            </div>
+            <p class="tab-note">Audio is transcribed on this Mac. Only text, and the screenshots you take or allow, go to your AI provider.</p>
+          </div>
+        </section>
+
+        <form class="instructions" id="instructionsForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">Custom instructions</p>
+          <p class="hint">Added to Dialpal's built-in instructions on every question. Tell it how you like answers: tone, length, language, what to focus on, things to avoid. Longer instructions are compressed when you save, so each question sends fewer tokens.</p>
+          <p class="hint caution" id="instructionsFormWarn" hidden>This looks like a resume. Paste it under Settings &gt; Sales &gt; About you instead: custom instructions are compressed when saved, which rewrites wording; Resume is sent word for word.</p>
+          <textarea id="instructionsInput" rows="8" maxlength="12000" spellcheck="true" placeholder="For example: Answer in British English. Never offer a discount on the first call. Always ask for a 20-minute demo, not a 30-minute one. Call the product Acme, never Acme AI."></textarea>
+          <details class="sent" id="sentBox" hidden>
+            <summary id="sentSummary">What Dialpal sends</summary>
+            <pre id="sentText"></pre>
+          </details>
+          <div class="formrow">
+            <span class="charcount" id="instructionsCount"></span>
+            <button type="button" class="ghost danger" id="instructionsClear">Clear</button>
+            <button type="button" class="ghost" id="instructionsCancel">Cancel</button>
+            <button type="submit" class="primary">Save instructions</button>
+          </div>
+        </form>
+
+        <form class="instructions" id="profileForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">Your details</p>
+          <p class="hint">Sent with every question, so openers use your real name. Optional.</p>
+          <div class="ob-grid">
+            <label>Name<input id="pfName" maxlength="200" autocomplete="off" /></label>
+            <label hidden>Salary range<input id="pfSalary" maxlength="200" placeholder="e.g. $140k to $160k" autocomplete="off" /></label>
+            <label hidden>Visa status<input id="pfVisa" maxlength="200" placeholder="e.g. Needs sponsorship" autocomplete="off" /></label>
+            <label hidden>Notice period<input id="pfNotice" maxlength="200" placeholder="e.g. 4 weeks" autocomplete="off" /></label>
+          </div>
+          <div class="formrow">
+            <button type="button" class="ghost" id="profileCancel">Cancel</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+
+        <form class="instructions" id="wipeForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">Delete all Dialpal data</p>
+          <p class="hint">Removes everything Dialpal keeps on this Mac, then quits. Dragging Dialpal to the Trash doesn't remove these, so do this first.</p>
+          <ul class="ob-points">
+            <li>Your API keys, from the macOS keychain</li>
+            <li>Settings, about you, product brief and your details</li>
+            <li>Logs</li>
+          </ul>
+          <label class="check"><input type="checkbox" id="wipeNotes" /> Also move my saved meeting notes (Documents/Dialpal) to the Trash</label>
+          <p class="hint">This can't be undone. To remove Dialpal's screen and audio permission, open System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording.</p>
+          <div class="formrow">
+            <button type="button" class="ghost" id="wipeCancel">Cancel</button>
+            <button type="submit" class="primary alarm" id="wipeConfirm">Delete and quit</button>
+          </div>
+        </form>
+
+        <form class="instructions" id="docForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead" id="docLead"></p>
+          <p class="hint" id="docHint"></p>
+          <textarea id="docInput" rows="10" spellcheck="true"></textarea>
+          <div class="formrow">
+            <span class="charcount" id="docCount"></span>
+            <button type="button" class="ghost" id="docImport">Import file…</button>
+            <button type="button" class="ghost danger" id="docClear">Clear</button>
+            <button type="button" class="ghost" id="docCancel">Cancel</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+
+        <section class="shortcuts" id="shortcutsPanel" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="lead">Shortcuts</p>
+          <p class="hint">Click a shortcut, then press the new keys. Use at least ⌘, ⌥ or ⌃ so it doesn't clash with typing.</p>
+          <div class="group" id="shortcutList"></div>
+          <div class="formrow">
+            <button type="button" class="ghost danger" id="shortcutsReset">Reset to defaults</button>
+            <button type="button" class="primary" id="shortcutsDone">Done</button>
+          </div>
+        </section>
+
+        <form class="keyform" id="keyForm" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <button type="button" class="back" id="keyStepBack" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Back</button>
+          <span class="step-label" id="keyStepLabel" hidden></span>
+          <p class="lead" id="keyLead">Choose who answers, then add an API key.</p>
+          <div class="provider-cards" id="keyProvider" role="radiogroup" aria-label="AI provider">
+            <button type="button" class="provider-card" role="radio" data-value="openai">
+              <span class="pc-title">OpenAI-compatible</span>
+              <span class="pc-desc">Any server that speaks the OpenAI API, hosted or on your network.</span>
+              <span class="pc-note">Bring your own endpoint</span>
+            </button>
+            <button type="button" class="provider-card" role="radio" data-value="anthropic">
+              <span class="pc-title">Anthropic</span>
+              <span class="pc-desc">Claude models through your own API key.</span>
+              <span class="pc-note">Hosted · pay per use</span>
+            </button>
+          </div>
+          <div class="conn-card">
+            <div class="keyfields" id="openaiFields" hidden>
+              <label>Server address<input id="keyBaseUrl" type="url" class="mono" placeholder="https://openrouter.ai/api/v1" autocomplete="off" spellcheck="false" /></label>
+            </div>
+            <div class="keyfields-row">
+              <div class="combo-field">
+                <label for="keyModel">Model</label>
+                <div class="combo" id="keyModelCombo">
+                  <input id="keyModel" role="combobox" aria-expanded="false" aria-controls="keyModelList" aria-autocomplete="list" placeholder="Choose or type a model" autocomplete="off" spellcheck="false" />
+                  <button type="button" class="combo-toggle" id="keyModelToggle" tabindex="-1" aria-label="Show all models"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8 10 12.5 14.5 8" /></svg></button>
+                  <ul class="combo-list" id="keyModelList" role="listbox" hidden></ul>
+                </div>
+              </div>
+              <label>API key<input id="keyInput" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" /></label>
+            </div>
+            <p class="model-status" id="keyModelStatus" hidden></p>
+            <div class="test-row">
+              <button type="button" class="test-btn" id="testConnBtn">Test connection</button>
+              <span class="test-status" id="testConnStatus" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="testConnText">Not tested since your last change</span></span>
+            </div>
+          </div>
+          <p class="hint" id="keyHint">Create one at console.anthropic.com. It's saved in your macOS keychain.</p>
+          <div class="key-actions">
+            <button type="button" class="textlink danger" id="removeKeyBtn" hidden>Remove saved key</button>
+            <span class="spacer"></span>
+            <span class="key-manage" id="keyManage" hidden><button type="button" class="ghost" id="cancelKeyBtn">Cancel</button></span>
+            <button type="button" class="ghost" id="pasteKeyBtn">Paste</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+
+        <article class="answer" id="answer" hidden>
+          <div class="answer-head">
+            <blockquote class="question" id="answerQ"></blockquote>
+            <button type="button" class="think-btn" id="thinkHarder" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5c.4 3.6 1.9 5.1 5.5 5.5-3.6.4-5.1 1.9-5.5 5.5-.4-3.6-1.9-5.1-5.5-5.5 3.6-.4 5.1-1.9 5.5-5.5Z" /><path d="M15.5 13c.2 1.5.8 2.1 2.3 2.3-1.5.2-2.1.8-2.3 2.3-.2-1.5-.8-2.1-2.3-2.3 1.5-.2 2.1-.8 2.3-2.3Z" /></svg><span>Think harder</span><kbd id="thinkHarderKeys"></kbd></button>
+            <button type="button" class="textlink viewtoggle" id="viewToggle" hidden>Full answer</button>
+            <button class="icon copy" id="copyBtn" title="Copy answer">
+              <svg class="copy-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9.5" height="9.5" rx="2" /><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6.5A1.5 1.5 0 0 0 5.5 13H7" /></svg>
+              <svg class="done-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.5 3.5 7.5-8" /></svg>
+            </button>
+          </div>
+          <div class="body" id="answerBody"></div>
+          <div class="said" id="saidBox" hidden>
+            <p class="said-text" id="saidText" hidden></p>
+            <div class="said-links">
+              <button type="button" class="textlink" id="saidOpen">I said something else</button>
+            </div>
+            <form class="said-form" id="saidForm" hidden>
+              <input id="saidInput" maxlength="1000" placeholder="What you said, in a few words (e.g. used the Kafka story)" autocomplete="off" />
+              <button type="submit" class="ghost small">Save</button>
+            </form>
+          </div>
+          <p class="usage" id="answerUsage" hidden></p>
+        </article>
+
+        <section class="transcript" id="transcript" hidden>
+          <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
+          <p class="empty-note" id="transcriptEmpty">Nothing heard yet. Press Listen to start.</p>
+        </section>
+      </main>
+
+      <p class="notice" id="notice" role="status" hidden></p>
+
+      <footer class="dock">
+        <div class="shots" id="shots" hidden></div>
+        <div class="dock-row">
+          <nav class="pager" id="pager" hidden>
+            <button class="icon" id="prevBtn" title="Earlier answer">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>
+            </button>
+            <span id="pageLabel"></span>
+            <button class="icon" id="nextBtn" title="Later answer">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg>
+            </button>
+          </nav>
+          <div class="modepick" id="modePick">
+            <button type="button" class="modepick-btn" id="modeBtn" aria-haspopup="menu" aria-expanded="false"><span id="modeLabel">Meeting</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8 10 12.5 14.5 8" /></svg></button>
+            <div class="modemenu" id="modeMenu" role="menu" aria-label="Answer mode" hidden>
+              <button type="button" role="menuitemradio" data-value="meeting"><span>Meeting</span><small id="modeMeetingHint">Brief answers about the call and your screen</small></button>
+              <button type="button" role="menuitemradio" data-value="sales"><span>Sales</span><small>Your next line on a sales call, from your product brief</small></button>
+            </div>
+          </div>
+          <form class="ask" id="askForm">
+            <input id="question" placeholder="Type a question, or press Ask" autocomplete="off" />
+            <button type="submit" class="primary" id="askBtn">Ask</button>
+          </form>
+        </div>
+      </footer>
+    </div>
+    <script src="questions.js"></script>
+    <script src="urls.js"></script>
+    <script src="hints.js"></script>
+    <script src="onboarding.js"></script>
+    <script src="highlight.js"></script>
+    <script src="markdown.js"></script>
+    <script src="app.js"></script>
+    <script src="tooltip.js"></script>
+  </body>
+</html>

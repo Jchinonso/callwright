@@ -1,0 +1,23 @@
+// Loaded before app.js as a plain script (its functions become globals).
+
+// Setup steps, in order. "welcome" comes first; the speech model step until it
+// is installed; the key step only when there's no working key; the job
+// brief step only for sales.
+function onboardingSteps({ needsKey, needsModel, use }) {
+  return ["welcome", ...(needsModel ? ["speech"] : []), ...(needsKey ? ["key"] : []), "about", ...(use === "meetings" ? [] : ["job"]), "ready"];
+}
+
+// "Step 2 of 4" for a setup step; the welcome screen isn't counted.
+function stepLabel(steps, step) {
+  const counted = steps.filter((s) => s !== "welcome");
+  const i = counted.indexOf(step);
+  return i < 0 ? "" : `Step ${i + 1} of ${counted.length}`;
+}
+
+// Ask "Same product brief?" at the start of each call block:
+// when Sales mode is on, unless it was answered in the last 30 minutes
+// (a restart within the same call block). Clear session resets it.
+const JOB_RECHECK_MS = 30 * 60 * 1000;
+function shouldAskJob({ style, jdCheckedAt, now }) {
+  return style === "sales" && now - (jdCheckedAt || 0) > JOB_RECHECK_MS;
+}

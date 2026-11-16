@@ -1,0 +1,28 @@
+{
+  "name": "dialpal",
+  "version": "0.1.0",
+  "description": "macOS overlay for sales calls: hears the prospect and shows your next line, built from your product brief, with Claude or any OpenAI-compatible model",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "open dist/Dialpal-darwin-arm64/Dialpal.app",
+    "package": "sh scripts/package.sh arm64",
+    "package:x64": "sh scripts/package.sh x64",
+    "dev": "electron .",
+    "dmg": "npm run package && sh scripts/make-dmg.sh arm64",
+    "dmg:x64": "npm run package:x64 && sh scripts/make-dmg.sh x64"
+  },
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "audiotee": "^0.0.7",
+    "sherpa-onnx-darwin-arm64": "2.0.1",
+    "sherpa-onnx-node": "2.0.1"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.1.0"
+  },
+  "productName": "Dialpal",
+  "private": true
+}
