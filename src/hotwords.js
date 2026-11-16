@@ -149,3 +149,24 @@ export function planHotwords(phrases, tokens) {
     candidates = candidates.filter((c) => c !== drop);
   }
 }
+
+// Names worth listening for on a sales call, taken from what the rep already
+// typed: proper nouns in the product brief (the company, the product,
+// customers, competitors, the colleague who runs the demo), the prospect's
+// name and company, and the rep's own. Brief labels ("Proof:") and ordinary
+// capitalised words are left out. Most distinctive first, at most 24.
+const NOT_NAMES = new Set(
+  "Company Product Who Problem Proof Pricing Competitors Lead Meeting Disclosure Opener Pitch Source Heads The This That These Those We Our You Your They Their It Its If In On At For From With And But Or Not No Yes A An To Of By As Is Are Was Be From Hi Hello Mind Can Could Would Should Will Do Does Did Got Get Most Many Some All Any Each Every One Two Three Teams Team Finance Sales Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December First Second Quarter Annual Optional E.g Eg Also".split(" "),
+);
+export function callNames({ brief = "", target = {}, profile = {} } = {}) {
+  const out = [];
+  const add = (w) => {
+    const word = String(w || "").trim().replace(/[.,;:!?)]+$/, "");
+    if (word.length < 3 || NOT_NAMES.has(word) || out.includes(word)) return;
+    out.push(word);
+  };
+  for (const v of [target.name, target.company, profile.name, profile.company]) for (const w of String(v || "").split(/\s+/)) if (/^[A-Z]/.test(w)) add(w);
+  const body = String(brief).replace(/^[A-Za-z ]{2,24}:/gm, " "); // drop "Proof:" style labels
+  for (const m of body.matchAll(/\b[A-Z][a-zA-Z]+(?:\.[a-z]{2,4})?\b/g)) add(m[0]);
+  return out.slice(0, 24);
+}

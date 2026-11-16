@@ -8,7 +8,7 @@ import { Asr } from "./asr.js";
 import { Listener, MicListener } from "./audio.js";
 import { appendRecord, checkHubSpot, computeStats, OUTCOMES, extractRecord, fallbackRecord, pushToHubSpot, readRecords } from "./calls.js";
 import { cleanProspectLine, PERSONAS, prospectSystem, prospectUser, scorecardMarkdown, scorePractice } from "./practice.js";
-import { USER_BOOST } from "./hotwords.js";
+import { callNames, USER_BOOST } from "./hotwords.js";
 import { normalizeBaseUrl } from "./urls.js";
 import { caveman, keepsFacts } from "./compress.js";
 import { DEFAULT_BASE_URL, downloadModel, MODEL, modelPath, modelPresent, modelSize, removeOldModels, verifyModel } from "./models.js";
@@ -1386,13 +1386,21 @@ const SAY_NEXT = {
 
 // Listened for in every call: the model already knows most of these, and
 // the boost keeps them spelled this way. The user's words come first.
-const TECH_TERMS = "React, Next.js, TypeScript, JavaScript, Node.js, Python, Go, Rust, Java, Postgres, PostgreSQL, MySQL, Redis, MongoDB, Kubernetes, Docker, GraphQL, REST, API, AWS, GCP, Azure, SQL, LeetCode";
+const TECH_TERMS = "HubSpot, Salesforce, NetSuite, QuickBooks, Outreach, Salesloft, Gong, LinkedIn, Zoom, Slack, Excel";
 
 // Settings › Words to recognize, then TECH_TERMS (see hotwords.js).
 const userWords = () => config.vocabulary.split(",").map((w) => w.trim()).filter(Boolean);
-const hotwords = () => [...userWords(), ...TECH_TERMS.split(", ")];
+// Names from the brief, the prospect and the rep (see callNames): misheard
+// names are the costliest errors on a sales call ("Priya" heard as "Kriya").
+const callWords = () => callNames({ brief: config.productBrief, target: callTarget, profile: profile() }).filter((w) => !userWords().includes(w));
+const hotwords = () => [...userWords(), ...callWords(), ...TECH_TERMS.split(", ")];
 // What the engine listens for: the user's own words boosted higher.
-const speechHotwords = () => [...userWords().map((phrase) => ({ phrase, boost: USER_BOOST })), ...TECH_TERMS.split(", ")];
+const speechHotwords = () => [...[...userWords(), ...callWords()].map((phrase) => ({ phrase, boost: USER_BOOST })), ...TECH_TERMS.split(", ")];
+// The brief or the prospect changed: listen for the new names from the next phrase.
+const refreshHotwords = () => {
+  listener?.setHotwords(speechHotwords());
+  mic?.setHotwords(speechHotwords());
+};
 
 // A transcribed segment from Listener.
 function heard(line, keep) {
@@ -1703,6 +1711,7 @@ ipcMain.handle("set-setting", (_e, name, value) => {
   }
   else if (name === "resume" || name === "productBrief") {
     config[name] = String(value ?? "").slice(0, MAX_DOC);
+    if (name === "productBrief") refreshHotwords();
     // Saving a product brief confirms it for the calls at hand.
     if (name === "productBrief") config.jdCheckedAt = Date.now();
   }
@@ -1736,6 +1745,7 @@ ipcMain.handle("save-call", async (_e, override) => {
 ipcMain.handle("set-target", (_e, target) => {
   const clean = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
   callTarget = { name: clean(target?.name, 120), company: clean(target?.company, 120), role: clean(target?.role, 120), notes: clean(target?.notes, 500) };
+  refreshHotwords();
   broadcastState();
 });
 ipcMain.handle("next-call", () => {

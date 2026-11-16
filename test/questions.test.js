@@ -279,3 +279,8 @@ test("cold-call objections and brush-offs count, so Answer and auto-reply pick t
 test("ordinary prospect lines aren't objections", () => {
   for (const s of ["We use Salesforce and it's fine for most things, the team likes it.", "That sounds good to me", "Tuesday works.", "Our budget planning happens in Q3.", "I'll send the doc tomorrow."]) assert.ok(!isQuestion(s), s);
 });
+
+test("objections from a simulated call: an existing process that works, and a locked budget", () => {
+  for (const s of ["But I'll tell you up front, we've got a process for that already and it works fine.", "Budget's pretty much locked for this year.", "What we have works fine."]) assert.ok(isQuestion(s), s);
+  assert.ok(!isQuestion("The new process works from Monday."), "an ordinary statement");
+});

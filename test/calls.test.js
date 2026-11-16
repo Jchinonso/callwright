@@ -129,3 +129,11 @@ test("pushToHubSpot without an email skips the search; errors are plain", async 
   await assert.rejects(checkHubSpot("t", { fetchFn: async () => new Response("{}", { status: 403 }), baseUrl: "http://hs" }), /crm\.objects\.calls\.write/);
   assert.equal(await checkHubSpot("t", { fetchFn: async () => new Response("{}", { status: 200 }), baseUrl: "http://hs" }), true);
 });
+
+test("hint words for the speech model come from the brief, the prospect and the rep, without brief labels", async () => {
+  const { callNames } = await import("../src/hotwords.js");
+  const names = callNames({ brief: "Company: Ledgerly. We help finance teams.\nProof: Brightline cut time 62%.\nMeeting to book: demo with Priya on Tuesday.", target: { name: "Marcus Hill", company: "Northwind" }, profile: { name: "Sam Lee" } });
+  assert.deepEqual(names, ["Marcus", "Hill", "Northwind", "Sam", "Lee", "Ledgerly", "Brightline", "Priya"]);
+  assert.equal(classifyObjection("We've got a process for that already and it works fine."), "using_competitor");
+  assert.equal(classifyObjection("Budget's locked for this year."), "no_budget");
+});
