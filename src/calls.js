@@ -198,9 +198,13 @@ export function computeStats(records, now = Date.now()) {
     .filter((o) => o.count);
   const week = now - 7 * 24 * 60 * 60 * 1000;
   const scores = practice.map((r) => r.score).filter((s) => Number.isFinite(s));
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const todays = real.filter((r) => Date.parse(r.date) >= dayStart.getTime());
   return {
     calls: real.length,
     booked,
+    today: { calls: todays.length, booked: todays.filter((r) => r.outcome === "booked").length },
     bookedRate: rate(booked, real.length),
     lastWeek: real.filter((r) => Date.parse(r.date) >= week).length,
     outcomes,

@@ -90,7 +90,23 @@ function renderMarkdown(src) {
 // (same rule as splitKeys in assistant.js). Returns the answer without it.
 // streaming: the answer is still arriving, so a "Keys:" line being written
 // (the last line, no " · " yet) is hidden too instead of flashing as text.
+// Sales replies end with "Stage: discovery" (see assistant.js): read by the
+// call console, never shown. A stage line still streaming in is hidden too.
+const STAGE_LINE = /^\s*(?:\*\*)?Stage:(?:\*\*)?\s*(opener|pitch|discovery|objection|close)\b[.\s*]*$/i;
+const STAGE_PARTIAL = /^\s*(?:\*\*)?S(?:t(?:a(?:g(?:e(?::.*)?)?)?)?)?$/i;
+function takeStage(text, { streaming = false } = {}) {
+  const lines = (text || "").split("\n");
+  const i = lines.findLastIndex((l) => STAGE_LINE.test(l));
+  let stage = null;
+  if (i >= 0) {
+    stage = lines[i].match(STAGE_LINE)[1].toLowerCase();
+    lines.splice(i, 1);
+  } else if (streaming && lines.length > 1 && STAGE_PARTIAL.test(lines.at(-1))) lines.pop();
+  return { text: lines.join("\n").replace(/\n+$/, ""), stage };
+}
+
 function splitKeys(text, { streaming = false } = {}) {
+  text = takeStage(text, { streaming }).text;
   const lines = (text || "").split("\n");
   // Needs the " · " separator, so an ordinary line starting "Keys:" stays.
   const i = lines.slice(0, 6).findIndex((l) => /^\s*(?:\*\*)?Keys:/i.test(l) && l.includes("·"));

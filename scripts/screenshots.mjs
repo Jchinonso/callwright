@@ -28,7 +28,9 @@ const ANSWER = `**Totally fair. Out of curiosity, how are invoices getting match
 
 Ask: If it's mostly by hand, would a 20-minute look at how Brightline cut that time by 62% be worth it?
 
-*Bill.com doesn't auto-match POs on its base plan. Keep that for if they say they use it.*`;
+*Bill.com doesn't auto-match POs on its base plan. Keep that for if they say they use it.*
+
+Stage: objection`;
 
 const server = http.createServer((req, res) => {
   req.resume();
@@ -43,6 +45,20 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 
 const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-shots-"));
+// A made-up call log, so the home screen and stats have numbers.
+{
+  const logDir = path.join(dir, "documents", "Dialpal");
+  mkdirSync(logDir, { recursive: true });
+  const today = new Date();
+  const at = (h, m) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m).toISOString();
+  const rows = [
+    ["booked", ["using_competitor"], true], ["not_interested", ["not_interested"], false], ["voicemail", [], false], ["follow_up", ["bad_time"], true],
+    ["not_interested", ["using_competitor", "no_budget"], false], ["booked", ["send_info"], true], ["no_decision", ["using_competitor"], true],
+    ["voicemail", [], false], ["wrong_person", ["not_decision_maker"], false], ["not_interested", ["no_budget"], false], ["follow_up", ["using_competitor"], true], ["voicemail", [], false],
+  ].map(([outcome, types, handled], i) => ({ date: at(9 + Math.floor(i / 3), (i * 13) % 60), company: null, contact: null, email: null, outcome, meeting: null, objections: types.map((type) => ({ type, quote: "", handled })), nextStep: null, summary: null }));
+  rows.push({ date: at(8, 30), practice: true, score: 6, outcome: "no_decision", objections: [] }, { date: at(8, 45), practice: true, score: 8, outcome: "booked", objections: [] });
+  writeFileSync(path.join(logDir, "calls.jsonl"), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+}
 writeFileSync(path.join(dir, "config.json"), JSON.stringify({ provider: "openai", openaiBaseUrl: `http://127.0.0.1:${server.address().port}/v1`, openaiModel: "gpt-4o", autoScreen: false, style: "sales", invisible: true, resume: RESUME, productBrief: JOB, profileName: "Sam Lee" }));
 // The speech model is already installed, so setup goes straight past its step:
 // a stand-in (the real tokens.txt and a tiny encoder), with a stand-in engine
@@ -90,6 +106,8 @@ await run(`document.getElementById("obNext").click();`);
 await shot("setup-about");
 await run(`document.getElementById("onboardSkip").click();`);
 await until(`!onboarding`);
+await run(`await refreshHomeStats(); render();`);
+await shot("home");
 await run(`askingJob = true; render();`);
 await shot("new-call-block");
 await run(`document.getElementById("jdSame").click();`);
@@ -109,13 +127,24 @@ await until(`answers.length && answers.at(-1).status === "done"`);
 await run(`state.listening = true; pendingQuestion = null; renderStrip(); document.getElementById("stage").scrollTop = 0;`);
 await shot("sales-reply");
 
+// End of the call: the wrap-up screen.
+await run(`state.listening = false; state.transcriptCount = 2; openWrap(); render();
+  document.querySelector('#outcomes [data-outcome="booked"]').click();
+  document.getElementById("wrapMeeting").value = "Tuesday 2pm with Priya";
+  document.getElementById("wrapNext").value = "Send the invite and the Brightline case study";`);
+await shot("wrap-up");
+await run(`wrapOpen = false; state.listening = true; render();`);
+
 await run(`document.getElementById("viewToggle").click();`);
 await shot("key-points");
 await run(`document.getElementById("viewToggle").click();`);
 
-await run(`document.getElementById("modeBtn").click();`);
-await shot("mode-menu");
-await run(`setModeMenu(false);`);
+await run(`state.listening = false; answers = []; page = -1; openPanel("practice");`);
+await shot("practice-setup");
+await run(`closePanel(); document.getElementById("statsBtn").click();`);
+await until(`document.getElementById("statTiles").children.length === 4`);
+await shot("stats");
+await run(`closePanel(); setMenu(false);`);
 
 await run(`document.getElementById("menuBtn").click(); document.querySelector('#settingsTabs [data-tab="interview"]').click();`);
 await shot("settings-sales");

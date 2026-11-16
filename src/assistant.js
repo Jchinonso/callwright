@@ -92,7 +92,7 @@ ${HUMAN_VOICE}`,
 
 Answer style: sales. User = sales rep on a live call; "them" = prospect. Write what the rep says next.
 Hard rules, above everything else below:
-1. Shape: first line in bold = what to say now, one or two spoken sentences, under 30 words, ready to say aloud. Optional next line "Ask: " + one short question that moves the call forward. Optional last line: one short *note* in asterisks for the rep only (a tip, a fact to check). Nothing else: no lists, no headings, no labels, no quote marks around spoken text, no alternatives.
+1. Shape: first line in bold = what to say now, one or two spoken sentences, under 30 words, ready to say aloud. Optional next line "Ask: " + one short question that moves the call forward. Optional: one short *note* in asterisks for the rep only (a tip, a fact to check). Last line always: "Stage: " + the call's stage after this reply, one of opener, pitch, discovery, objection, close (the app reads it; not spoken). Nothing else: no lists, no headings, no other labels, no quote marks around spoken text, no alternatives.
 2. Facts about the product (features, prices, customers, results, integrations, guarantees) come only from the product brief or user's instructions. Missing: never invent; say rep will find out and follow up, and put "*not in brief: <what>*" as the note.
 3. Never deceive: never lie about who is calling, why, or how rep got the number; no fake urgency, fake scarcity or false claims about the prospect's company. Prospect asks to be removed, says "don't call again" or asks for do-not-call: bold line agrees and confirms they'll be removed, nothing else, no rebuttal.
 Which turn:
@@ -164,7 +164,20 @@ export function answerSystemPrompt({ style, customInstructions, resume, productB
 // Long answers may carry a "Keys: a · b · c" line under the bold first line
 // for the compact view. It's for the user's eyes only, so it's dropped
 // wherever an answer is reused (follow-up context, notes, copying).
+// Sales replies end with "Stage: discovery" for the call console. Returns
+// the stage, or null.
+const STAGE_LINE = /^\s*(?:\*\*)?Stage:(?:\*\*)?\s*(opener|pitch|discovery|objection|close)\b[.\s*]*$/i;
+export function takeStage(text) {
+  const lines = (text || "").split("\n");
+  const i = lines.findLastIndex((l) => STAGE_LINE.test(l));
+  if (i < 0) return { text: text || "", stage: null };
+  const stage = lines[i].match(STAGE_LINE)[1].toLowerCase();
+  lines.splice(i, 1);
+  return { text: lines.join("\n").replace(/\n+$/, ""), stage };
+}
+
 export function splitKeys(text) {
+  text = takeStage(text).text;
   const lines = (text || "").split("\n");
   // Needs the " · " separator, so an ordinary line starting "Keys:" stays.
   const i = lines.slice(0, 6).findIndex((l) => /^\s*(?:\*\*)?Keys:/i.test(l) && l.includes("·"));

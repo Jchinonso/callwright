@@ -15,16 +15,16 @@
           <span class="mark">dialpal</span>
         </div>
         <div class="actions">
-          <button class="pill listen" id="listenBtn" title="Listen to your call so answers can use what's said (⌘⇧\)">
+          <button class="pill listen" id="listenBtn" title="Start the call: Dialpal listens to the prospect (⌘⇧\)">
             <span class="pulse" aria-hidden="true"></span>
-            <span class="label idle-label">Listen</span>
-            <span class="label live-label">Listening</span>
-            <span class="label stop-label">Stop</span>
+            <span class="label idle-label">Start call</span>
+            <span class="label live-label">On call</span>
+            <span class="label stop-label">End call</span>
             <span class="timer" id="timer"></span>
           </button>
+          <span class="stage-chip" id="stageChip" hidden></span>
           <button class="pill" id="shotBtn" title="Screenshot your screen and answer it (⌘⇧2). Shift-click or ⌘⇧1 to collect several first.">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h2l1.2-1.6h4.6L13.5 5h2A1.5 1.5 0 0 1 17 6.5v8A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5Z" /><circle cx="10" cy="10.5" r="3" /></svg>
-            <span class="label">Screenshot</span>
             <span class="count" id="shotCount" hidden></span>
           </button>
           <button class="icon cloak" id="cloakBtn" aria-pressed="true">
@@ -91,7 +91,7 @@
           </div>
           <div class="ob-step" data-step="about">
             <p class="lead">About you</p>
-            <p class="hint" id="obAboutHint">So replies sound like you. Change it later in Settings &gt; Sales.</p>
+            <p class="hint" id="obAboutHint">So replies sound like you. Change it later in Settings &gt; Calls.</p>
             <span class="ob-label">What will you use Dialpal for?</span>
             <div class="seg" id="obUse" role="radiogroup">
               <button type="button" role="radio" data-value="sales">Sales calls</button>
@@ -154,16 +154,30 @@
           </div>
         </div>
 
-        <section class="welcome" id="welcome">
+        <section class="welcome home" id="welcome">
+          <h1 class="home-title" id="homeTitle">Ready to dial</h1>
+          <button type="button" class="home-brief" id="homeBrief">
+            <span class="hb-label">Brief</span>
+            <span class="hb-text" id="homeBriefText"></span>
+            <span class="hb-edit" id="homeBriefEdit">Edit</span>
+          </button>
+          <div class="home-actions">
+            <button type="button" class="primary big" id="homeCall"><span>Start call</span><kbd id="homeCallKeys"></kbd></button>
+            <button type="button" class="ghost big" id="homePractice">Practice</button>
+          </div>
+          <div class="home-today" id="homeToday" hidden>
+            <div class="ht-numbers" id="homeNumbers"></div>
+            <p class="ht-top" id="homeTop"></p>
+          </div>
           <ul class="guide" id="guide"></ul>
           <p class="hints" id="hints" hidden></p>
         </section>
 
         <section class="settings" id="menu" hidden>
           <div class="seg settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings">
+            <button role="tab" data-tab="interview">Calls</button>
+            <button role="tab" data-tab="session">Call log</button>
             <button role="tab" data-tab="answers">AI Model</button>
-            <button role="tab" data-tab="interview">Sales</button>
-            <button role="tab" data-tab="session">Session</button>
             <button role="tab" data-tab="general">General</button>
             <button role="tab" data-tab="about">About</button>
           </div>
@@ -382,7 +396,7 @@
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
           <p class="lead">Custom instructions</p>
           <p class="hint">Added to Dialpal's built-in instructions on every question. Tell it how you like answers: tone, length, language, what to focus on, things to avoid. Longer instructions are compressed when you save, so each question sends fewer tokens.</p>
-          <p class="hint caution" id="instructionsFormWarn" hidden>This looks like a resume. Paste it under Settings &gt; Sales &gt; About you instead: custom instructions are compressed when saved, which rewrites wording; Resume is sent word for word.</p>
+          <p class="hint caution" id="instructionsFormWarn" hidden>This looks like a resume. Paste it under Settings &gt; Calls &gt; About you instead: custom instructions are compressed when saved, which rewrites wording; Resume is sent word for word.</p>
           <textarea id="instructionsInput" rows="8" maxlength="12000" spellcheck="true" placeholder="For example: Answer in British English. Never offer a discount on the first call. Always ask for a 20-minute demo, not a 30-minute one. Call the product Acme, never Acme AI."></textarea>
           <details class="sent" id="sentBox" hidden>
             <summary id="sentSummary">What Dialpal sends</summary>
@@ -526,6 +540,40 @@
           <p class="usage" id="answerUsage" hidden></p>
         </article>
 
+        <div class="chips" id="chips" role="group" aria-label="Objection they just raised" hidden>
+          <span class="chips-label">They said</span>
+          <button type="button" class="chip" data-line="I'm not interested.">Not interested</button>
+          <button type="button" class="chip" data-line="Just send me an email.">Send an email</button>
+          <button type="button" class="chip" data-line="We already use something for that.">Already use X</button>
+          <button type="button" class="chip" data-line="It's too expensive, there's no budget.">Price</button>
+          <button type="button" class="chip" data-line="It's a bad time, can you call back?">Bad time</button>
+          <button type="button" class="chip" data-line="Who is this? How did you get my number?">Who is this?</button>
+          <button type="button" class="chip" data-line="That's not my area.">Not my area</button>
+        </div>
+
+        <form class="wrap" id="wrap" hidden>
+          <p class="lead">How did it end?</p>
+          <p class="hint" id="wrapMeta"></p>
+          <div class="outcomes" id="outcomes" role="radiogroup" aria-label="Outcome">
+            <button type="button" role="radio" data-outcome="booked">Meeting booked</button>
+            <button type="button" role="radio" data-outcome="follow_up">Follow-up</button>
+            <button type="button" role="radio" data-outcome="not_interested">Not interested</button>
+            <button type="button" role="radio" data-outcome="no_decision">No decision</button>
+            <button type="button" role="radio" data-outcome="wrong_person">Wrong person</button>
+            <button type="button" role="radio" data-outcome="voicemail">Voicemail</button>
+            <button type="button" role="radio" data-outcome="do_not_call">Do not call</button>
+          </div>
+          <div class="ob-grid wrap-fields">
+            <label>Meeting<input id="wrapMeeting" maxlength="200" placeholder="e.g. Tuesday 2pm with Priya" autocomplete="off" /></label>
+            <label>Next step<input id="wrapNext" maxlength="200" placeholder="e.g. send the invite and case study" autocomplete="off" /></label>
+          </div>
+          <p class="hint">Leave anything blank and Dialpal fills it in from the call.</p>
+          <div class="formrow">
+            <button type="button" class="ghost" id="wrapSkip">Don't save</button>
+            <button type="submit" class="primary" id="wrapSave">Save call</button>
+          </div>
+        </form>
+
         <section class="practice-call" id="practiceCall" hidden>
           <div class="pc-head">
             <div class="pc-who"><span class="pc-lamp" aria-hidden="true"></span><span id="pcName"></span><span class="pc-timer" id="pcTimer"></span></div>
@@ -546,7 +594,7 @@
             <div class="row-text"><span>Speak their lines aloud</span><small>Uses your Mac's voices. Wear headphones for the cleanest mic.</small></div>
             <span class="switch" aria-hidden="true"></span>
           </button>
-          <p class="hint caution" id="practiceBriefWarn" hidden>No product brief yet, so the prospect assumes a generic software product. Add one in Settings › Sales for realistic practice.</p>
+          <p class="hint caution" id="practiceBriefWarn" hidden>No product brief yet, so the prospect assumes a generic software product. Add one in Settings › Calls for realistic practice.</p>
           <p class="hint" id="practiceClearNote" hidden>Starting clears this session. Save notes first if you need them.</p>
           <div class="formrow">
             <button type="button" class="ghost" id="practiceCancel">Cancel</button>

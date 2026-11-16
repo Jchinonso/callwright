@@ -1044,3 +1044,92 @@ body.practicing .mark::before { background: var(--ice); box-shadow: 0 0 8px colo
   .stat-tiles { grid-template-columns: 1fr 1fr; }
   .persona-cards { grid-template-columns: 1fr; }
 }
+
+/* ---------------------------------------------------------------------------
+   Call console. Home before a call, cue card and objection chips during it,
+   the wrap-up after it. The question box only appears once a call is on.
+   ------------------------------------------------------------------------- */
+body.idle .dock { display: none; }
+#shotBtn { padding: 0 10px; }
+
+.stage-chip {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  color: var(--text);
+  font: 600 13px/1 var(--cond);
+  white-space: nowrap;
+}
+
+.home { padding: 6px 2px 4px; }
+.home-title { margin: 2px 0 12px; font: 700 30px/1.1 var(--cond); letter-spacing: 0.005em; }
+.home-brief {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--raise);
+  text-align: left;
+}
+.home-brief:hover { background: var(--raise-hover); }
+.hb-label { flex: none; color: var(--dim); font-size: 12px; font-weight: 600; }
+.hb-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-brief.missing .hb-text { color: var(--caution); white-space: normal; }
+.hb-edit { flex: none; color: var(--ice); font-size: 12.5px; font-weight: 600; }
+.home-actions { display: flex; gap: 8px; margin: 14px 0 16px; }
+.big { height: 46px; padding: 0 22px; font: 600 17px var(--cond); }
+.primary.big { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.primary.big kbd { font: 500 12px var(--ui); color: inherit; opacity: 0.7; }
+.home-today { padding: 12px 0 2px; border-top: 1px solid var(--edge); }
+.ht-numbers { display: flex; gap: 22px; }
+.ht-num { display: flex; flex-direction: column; color: var(--dim); font-size: 12px; }
+.ht-num b { font: 700 24px/1.1 var(--num); color: var(--text); }
+.ht-top { margin: 8px 0 0; color: var(--dim); font-size: 12.5px; }
+.home .guide { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); font-size: 12.5px; }
+.home .hints { margin-top: 12px; }
+
+/* In Sales mode the prospect's line is already in the banner above, so the
+   answer is just the cue card: no quoted question, no paging, no costs. */
+body.sales .answer-head .question { visibility: hidden; height: 0; margin: 0; }
+body.sales .answer-head { justify-content: flex-end; min-height: 0; }
+body.sales #pager, body.sales #answerUsage { display: none !important; }
+body.listening .caption:has(.qtag) { margin: 0 12px 10px; padding: 10px 12px; border-radius: 10px; background: var(--raise); }
+body.listening .caption:has(.qtag.objection) { background: color-mix(in srgb, var(--alert) 10%, transparent); }
+
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 2px; }
+.chips-label { color: var(--dim); font-size: 12px; margin-right: 2px; }
+.chip {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.chip:hover { border-color: color-mix(in srgb, var(--alert) 55%, transparent); background: color-mix(in srgb, var(--alert) 10%, transparent); }
+
+.wrap .lead { font-size: 22px; margin: 2px 0 2px; }
+.outcomes { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.outcomes button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--raise);
+  font-weight: 600;
+}
+.outcomes button:hover { background: var(--raise-hover); }
+.outcomes button[aria-checked="true"] { background: var(--ice); color: var(--on-lamp); }
+.outcomes button[data-outcome="do_not_call"][aria-checked="true"],
+.outcomes button[data-outcome="not_interested"][aria-checked="true"] { background: var(--alert); color: #fff; }
+.wrap-fields { grid-template-columns: 1fr 1fr; }
+/* Home has its own big Start call; the wrap-up needs no question box. */
+body.idle .listen, body.wrapping .listen { display: none; }
+body.wrapping .dock { display: none; }
+.home .guide { display: none; }
+body.no-dock .dock { display: none; }

@@ -1141,7 +1141,7 @@ test("update bar: shows a newer version, progress, and hides on Later and during
 
 test("Settings tabs are named for what they hold; About shows the version and checks for updates", { skip }, async () => {
   await run(`if ($("menu").hidden) $("menuBtn").click();`);
-  assert.deepEqual(await run(`return [...document.querySelectorAll("#settingsTabs button")].map((b) => b.textContent);`), ["AI Model", "Sales", "Session", "General", "About"]);
+  assert.deepEqual(await run(`return [...document.querySelectorAll("#settingsTabs button")].map((b) => b.textContent);`), ["Calls", "Call log", "AI Model", "General", "About"]);
   await click('#settingsTabs [data-tab="about"]');
   assert.match(await run(`return $("aboutVersion").textContent;`), /^Version 1\.0\.0 · (Apple Silicon|Intel)$/);
   assert.equal(await run(`return $("updateCheckTitle").textContent;`), "Check for updates");
@@ -1301,6 +1301,79 @@ test("a saved real call is logged, sent to HubSpot when on, and counted in stats
   await run(`await g.clear();`);
 });
 
+
+test("call console: home before a call, objection chips during it, the wrap-up after it saves and resets", { skip }, async () => {
+  await run(`await g.clear(); await g.setSetting("style", "sales"); await g.setSetting("productBrief", "Product: Ledgerly, AP automation.\\nProof: Brightline cut processing time 62%."); setMenu(false);`);
+  await until(`state.style === "sales" && !state.listening`);
+  await run(`answers = []; page = -1; wrapOpen = false; render();`);
+  // Home: the brief's first line, Start call, no question box.
+  assert.ok(await shown("welcome"));
+  assert.equal(await run(`return document.getElementById("homeBriefText").textContent;`), "Ledgerly, AP automation.");
+  assert.ok(await run(`return document.body.classList.contains("idle") && document.body.classList.contains("no-dock");`));
+  assert.equal(await run(`return getComputedStyle(document.querySelector(".dock")).display;`), "none");
+  await run(`await refreshHomeStats();`);
+  assert.match(await run(`return document.getElementById("homeNumbers").textContent;`), /calls today/);
+  await click("#homeBrief");
+  assert.ok(await shown("docForm"), "the brief opens to edit");
+  await click("#docCancel");
+  await click("#homePractice");
+  assert.ok(await shown("practicePanel"));
+  await click("#practiceCancel");
+  // During a call: chips and the question box; a chip asks as if the prospect said it.
+  await run(`state.listening = true; state.listeningSince = Date.now(); render();`);
+  assert.ok(!(await shown("welcome")));
+  assert.ok(await shown("chips"));
+  assert.notEqual(await run(`return getComputedStyle(document.querySelector(".dock")).display;`), "none");
+  const before = requests.length;
+  await run(`document.querySelector('#chips [data-line^="Just send me"]').click();`);
+  await until(`answers.length === 1 && answers[0].status === "done"`);
+  assert.match(requests.slice(before).find((r) => r.stream).messages[1].content.at(-1).text, /Prospect said \(or rep typed\): Just send me an email\./);
+  // A reply's Stage line becomes the stage chip and never shows in the cue.
+  await run(`answers[0].text = "**Happy to. What should it cover?**\\n\\nStage: objection"; state.listening = true; render();`);
+  assert.equal(await run(`return document.getElementById("stageChip").textContent;`), "Objection");
+  assert.ok(!(await run(`return document.getElementById("answerBody").textContent.includes("Stage:");`)));
+  // End of the call: the wrap-up, then Save call logs it and resets for the next dial.
+  await run(`await g.testHeard({ text: "Just send me an email.", keep: true });`);
+  await until(`state.transcriptCount === 1`);
+  await run(`openWrap(); render();`);
+  assert.ok(await shown("wrap"));
+  assert.ok(!(await shown("answer")), "the wrap-up replaces the last reply");
+  assert.equal(await run(`return getComputedStyle(document.querySelector(".dock")).display;`), "none");
+  await run(`document.querySelector('#outcomes [data-outcome="follow_up"]').click(); document.getElementById("wrapNext").value = "Email the case study";`);
+  assert.equal(await run(`return document.querySelector('#outcomes [aria-checked="true"]').dataset.outcome;`), "follow_up");
+  await run(`document.getElementById("wrap").requestSubmit();`);
+  await until(`!wrapOpen && state.transcriptCount === 0`, 6000);
+  const last = callLog().at(-1);
+  assert.equal(last.outcome, "follow_up", "the rep's outcome wins over the model's");
+  assert.equal(last.nextStep, "Email the case study");
+  assert.equal(last.meeting, "Tuesday 2pm", "blank fields come from the call");
+  assert.ok(await shown("welcome"), "back home for the next dial");
+  // Don't save: resets without logging.
+  const n = callLog().length;
+  await run(`await g.testHeard({ text: "Who is this?", keep: true });`);
+  await until(`state.transcriptCount === 1`);
+  await run(`openWrap(); render(); document.getElementById("wrapSkip").click();`);
+  await until(`!wrapOpen && state.transcriptCount === 0`);
+  assert.equal(callLog().length, n);
+});
+
+test("ending a sales call with the prospect heard opens the wrap-up; nothing heard goes straight home", { skip }, async () => {
+  await run(`await g.clear(); await g.setSetting("style", "sales");`);
+  await run(`await g.testHeard({ text: "Not interested.", keep: true });`);
+  await until(`state.transcriptCount === 1 && state.style === "sales"`);
+  // Listening on (as the window last heard it); any real state update now says it's off.
+  await run(`wasListening = true; state.listening = true; render(); g.setSetting("autoScreen", false);`);
+  await until(`!state.listening && wrapOpen`);
+  assert.ok(await shown("wrap"));
+  await run(`document.getElementById("wrapSkip").click();`);
+  await until(`!wrapOpen && state.transcriptCount === 0`);
+  // Nothing heard: no wrap-up.
+  await run(`wasListening = true; state.listening = true; render(); g.setSetting("autoScreen", false);`);
+  await until(`!state.listening`);
+  await sleep(100);
+  assert.equal(await run(`return wrapOpen;`), false);
+  assert.ok(await shown("welcome"));
+});
 
 test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {
   const { existsSync } = await import("node:fs");

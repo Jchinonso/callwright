@@ -1,10 +1,11 @@
 # Dialpal
 
-A macOS overlay for sales calls. Dialpal listens to the prospect's side of the call, flags questions and objections as they're said, and shows the next line to say: one sentence, then a question to keep the call moving. Every product fact in a reply comes from your product brief. It works with Claude or any OpenAI-compatible model.
+A macOS call console for cold calling. Before the call it shows your brief and today's numbers. During the call it listens to the prospect, flags objections, and shows the next line to say with the call's stage. After the call, one tap logs the outcome to your call log and HubSpot. Between calls, practice against an AI prospect and get scored. Every product fact in a reply comes from your product brief. It works with Claude or any OpenAI-compatible model.
 
 <p align="center">
-  <img src="docs/images/question-heard.png" width="49%" alt="Dialpal flagging an objection from the prospect, with a Reply button" />
-  <img src="docs/images/sales-reply.png" width="49%" alt="A reply shown as a large cue line, with a follow-up question under it" />
+  <img src="docs/images/home.png" width="32%" alt="Home: ready to dial, the brief, Start call and Practice, today's numbers" />
+  <img src="docs/images/sales-reply.png" width="32%" alt="On a call: the next line as a cue card, the stage, the follow-up question" />
+  <img src="docs/images/wrap-up.png" width="32%" alt="After the call: outcome, meeting and next step, then Save call" />
 </p>
 
 ## Features
@@ -15,13 +16,18 @@ A macOS overlay for sales calls. Dialpal listens to the prospect's side of the c
 - **Never makes things up.** Prices, features, customers and results come only from your product brief. If something isn't in it, the reply says you'll follow up, and a note tells you what's missing.
 - **Stays honest.** It never lies about who's calling or why, and never uses fake urgency. "Take me off your list" always gets a plain yes.
 - **Keeps up with you.** If you said something else, press **I said something else** and the next reply builds on what you actually said.
-- **Call notes.** Save a Markdown summary with the outcome (meeting booked or not, objections raised, next step), action items and the transcript.
+- **One-tap objections.** If the transcript misses it, tap what they said (Not interested, Send an email, Already use X, Price, Bad time, Who is this?, Not my area) and get the reply.
+- **Wrap-up in seconds.** When the call ends, pick the outcome, add the meeting time and next step (or leave them blank and Dialpal reads them from the call), and **Save call**. Dialpal is ready for the next dial.
+- **Call log.** Every saved call adds a row to `Documents/Dialpal/calls.csv` (import it into any CRM) and a notes file with a summary and the transcript.
+- **HubSpot.** Optionally log each real call to HubSpot as a call with the outcome, objections and next step, on the contact when their email came up.
+- **Stats.** Calls, meetings booked, booked rate, the objections you hear most, how often you handle each one and how often a meeting follows it.
+- **Practice calls.** Four AI prospects (busy, skeptical, curious, a gatekeeper) pick up and talk back with a Mac voice. Talk into your mic or type, press ⌘↵ for a hint, and end the call to get a scorecard: opener, discovery, objections and close, what to work on, and a better version of your weakest line. Practice is kept out of your real stats and never sent to HubSpot.
 - **Meeting mode** for ordinary calls: plain answers about the call and your screen.
 - **Any model.** Anthropic (Opus, Sonnet, Haiku) or any OpenAI-compatible API: OpenAI, Gemini, OpenRouter, Groq, Mistral, or a local Ollama or LM Studio.
 
 ## The product brief
 
-Settings › Sales › Product brief. Replies use only what's here, word for word. A good brief:
+Home › Brief (or Settings › Calls › Product brief). Replies use only what's here, word for word. A good brief:
 
 ```
 Product: what it is, in one line
@@ -53,14 +59,16 @@ Also follow do-not-call rules (the US National Do Not Call Registry and your com
 ## Using Dialpal
 
 1. Open Dialpal and follow setup: about you (optional), the speech model, your AI key, your product brief.
-2. Press **Listen** (⌘⇧\\) when the call starts. The amber lamp next to the name lights up.
-3. When the prospect says something, it appears under the bar, tagged **Prospect** or **Objection**. Press **Reply** (⌘↵), or turn on **Settings › Sales › Reply automatically**.
+2. Press **Start call** (⌘⇧\\) when the call connects. The amber lamp lights up and the header shows the time and the call's stage.
+3. When the prospect says something, it appears at the top, tagged **Prospect** or **Objection**. Press **Reply** (⌘↵), turn on **Settings › Calls › Reply automatically**, or tap the objection they raised.
 4. Read the big line aloud. Use **Then ask** if the moment fits.
-5. After the call, **Save notes**.
+5. Press **End call**, pick how it ended, and **Save call**.
+
+To practise, press **Practice** on the home screen, pick who picks up, and start the call. Microphone access is asked for the first time; it's only ever used in practice.
 
 | Shortcut | Action |
 | --- | --- |
-| ⌘⇧\\ | Start or stop listening |
+| ⌘⇧\\ | Start or end a call |
 | ⌘↵ | Reply to what they just said, or to what you typed |
 | ⌘⇧2 | Screenshot your screen and answer |
 | ⌘\\ | Show or hide Dialpal |
@@ -69,7 +77,8 @@ Also follow do-not-call rules (the US National Do Not Call Registry and your com
 ## Privacy and data
 
 - **Audio stays on your Mac.** Transcription runs locally. Only text (and screenshots you take) goes to your AI provider.
-- **Your microphone is never recorded.** Dialpal hears only the Mac's audio, the prospect's side.
+- **Your microphone is never used on real calls.** Dialpal hears only the Mac's audio, the prospect's side. Practice calls use the mic, transcribed on your Mac like the call audio.
+- **HubSpot** gets only the call record (summary, outcome, objections, next step), never audio or the transcript. The token is kept in your keychain.
 - **Keys** are stored in the macOS login keychain.
 - Settings live in `~/Library/Application Support/Dialpal/`, logs in `~/Library/Logs/Dialpal/`, notes in `~/Documents/Dialpal/`.
 - **Settings › General › Delete all Dialpal data** removes all of it.

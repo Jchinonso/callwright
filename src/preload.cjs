@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("dialpal", {
   pauseShortcuts: (paused) => ipcRenderer.invoke("pause-shortcuts", paused),
   saveNotes: () => ipcRenderer.invoke("save-notes"),
   getStats: () => ipcRenderer.invoke("get-stats"),
+  saveCall: (override) => ipcRenderer.invoke("save-call", override),
+  nextCall: () => ipcRenderer.invoke("next-call"),
   openCallLog: () => ipcRenderer.invoke("open-call-log"),
   setHubSpotToken: (token) => ipcRenderer.invoke("set-hubspot-token", token),
   testHubSpot: (token) => ipcRenderer.invoke("test-hubspot", token),

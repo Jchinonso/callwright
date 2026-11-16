@@ -122,3 +122,12 @@ test("isNoAnswer: the skip reply in the formats models use, never a real answer"
   }
   for (const t of ["None of my previous roles used Kafka", "Nonetheless, I", "I led the migration", ""]) assert.equal(isNoAnswer(t, true), false, t);
 });
+
+test("sales replies end with a Stage line: read for the console, dropped everywhere else", async () => {
+  const { takeStage } = await import("../src/assistant.js");
+  assert.deepEqual(takeStage("**Fair enough.**\nAsk: what do you use today?\n\nStage: objection"), { text: "**Fair enough.**\nAsk: what do you use today?", stage: "objection" });
+  assert.deepEqual(takeStage("**Hi.**\n**Stage:** Opener."), { text: "**Hi.**", stage: "opener" });
+  assert.equal(takeStage("The stage: was set").stage, null);
+  assert.equal(splitKeys("**Yes.**\n\nStage: close").text, "**Yes.**", "previous answers and notes never carry it");
+  assert.match(systemPrompt("sales", "", "", ""), /Last line always: "Stage: "/);
+});

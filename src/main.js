@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Asr } from "./asr.js";
 import { Listener, MicListener } from "./audio.js";
-import { appendRecord, checkHubSpot, computeStats, extractRecord, fallbackRecord, pushToHubSpot, readRecords } from "./calls.js";
+import { appendRecord, checkHubSpot, computeStats, OUTCOMES, extractRecord, fallbackRecord, pushToHubSpot, readRecords } from "./calls.js";
 import { cleanProspectLine, PERSONAS, prospectSystem, prospectUser, scorecardMarkdown, scorePractice } from "./practice.js";
 import { USER_BOOST } from "./hotwords.js";
 import { normalizeBaseUrl } from "./urls.js";
@@ -1077,7 +1077,9 @@ const callMinutes = () => {
 // log (calls.jsonl and calls.csv in the same folder), sent on to HubSpot when
 // that's on. A practice call adds its scorecard and is marked as practice, so
 // it never counts in the real-call stats or reaches the CRM.
-async function saveNotes({ scorecard = null, practiceCall = null } = {}) {
+// override: what the rep picked on the wrap-up screen (outcome, meeting,
+// next step). It wins over what the model read from the transcript.
+async function saveNotes({ scorecard = null, practiceCall = null, override = null } = {}) {
   if (savingNotes) return;
   if (!transcript.length && !answers.length) {
     return send("notice", { level: "warn", text: "Nothing to save yet. Listen to a call or ask something first." });
@@ -1121,6 +1123,12 @@ async function saveNotes({ scorecard = null, practiceCall = null } = {}) {
 
     record ??= fallbackRecord(transcript);
     Object.assign(record, { date: now.toISOString(), durationMin: callMinutes(), notesFile: file });
+    if (override) {
+      if (Object.hasOwn(OUTCOMES, override.outcome)) record.outcome = override.outcome;
+      const text = (v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || null;
+      if (text(override.meeting)) record.meeting = text(override.meeting);
+      if (text(override.nextStep)) record.nextStep = text(override.nextStep);
+    }
     if (practiceCall) {
       record.practice = true;
       record.persona = practiceCall.persona;
@@ -1683,6 +1691,23 @@ ipcMain.handle("clipboard-write", (_e, text) => clipboard.writeText(String(text 
 ipcMain.handle("add-shot", () => addShot());
 ipcMain.handle("save-notes", () => saveNotes());
 ipcMain.handle("get-stats", async () => computeStats(await readRecords(notesDir())));
+// The wrap-up screen: save this call with the rep's outcome, then start the
+// next call fresh (the product brief stays confirmed).
+ipcMain.handle("save-call", async (_e, override) => {
+  const record = await saveNotes({ override: override || null });
+  if (!record) return false;
+  transcript = [];
+  answers = [];
+  shots = [];
+  broadcastState();
+  return true;
+});
+ipcMain.handle("next-call", () => {
+  transcript = [];
+  answers = [];
+  shots = [];
+  broadcastState();
+});
 ipcMain.handle("open-call-log", () => {
   const csv = path.join(notesDir(), "calls.csv");
   if (!existsSync(csv)) return send("notice", { level: "warn", text: "No calls logged yet. Save notes after a call to start the log." });

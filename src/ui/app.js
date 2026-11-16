@@ -17,6 +17,11 @@ let view = "answers"; // "answers" | "transcript"
 // closed, to the same tab.
 let panel = null;
 let backToSettings = false;
+let wrapOpen = false; // the after-call screen (outcome, meeting, next step)
+let wrapOutcome = null;
+let homeStats = null; // call stats for the home screen
+let practicePick = null; // persona chosen in the practice setup panel
+let practiceLines = []; // this practice call's lines, for the call view
 let docKind = null; // "resume" | "productBrief" while panel is "doc"
 // Setup in progress: { step, needsKey, use }. Null once done or skipped.
 let onboarding = null;
@@ -27,9 +32,9 @@ let pendingQuestion = null; // latest question someone else asked, until answere
 // Settings tab, remembered per viewer; settings work without it.
 let settingsTab = (() => {
   try {
-    return localStorage.getItem("dialpal.settingsTab") || "answers";
+    return localStorage.getItem("dialpal.settingsTab") || "interview";
   } catch {
-    return "answers";
+    return "interview";
   }
 })();
 const STYLE_HINTS = {
@@ -121,6 +126,10 @@ setInterval(renderTimer, 1000);
 
 function renderStrip() {
   document.body.classList.toggle("listening", !!state.listening);
+  // The call's stage, from the latest Sales reply ("Stage: discovery").
+  const stage = state.listening && state.style === "sales" ? takeStage(answers.at(-1)?.text || "").stage : null;
+  $("stageChip").hidden = !stage;
+  $("stageChip").textContent = stage ? stage[0].toUpperCase() + stage.slice(1) : "";
   document.body.classList.toggle("practicing", !!state.practice?.active);
   document.body.classList.toggle("answering", !!state.busy);
   renderTimer();
@@ -245,14 +254,14 @@ function renderShortcutHints() {
   if (!k) return;
   // In call order: listen, answer, then the rest.
   $("guide").innerHTML = [
-    ["listen", "Start or stop listening to your call"],
+    ["listen", "Start or end a call"],
     ["ask", "Reply to what they just said, or to what you've typed"],
     ["snap", "Screenshot your screen and get an answer"],
     ["toggleWindow", "Show or hide Dialpal"],
   ]
     .map(([a, label]) => `<li><span class="keys">${keycaps(k[a])}</span><span>${label}</span></li>`)
     .join("");
-  $("hints").innerHTML = [["listen", "Listen"], ["ask", "Answer"], ["snap", "Screenshot"]]
+  $("hints").innerHTML = [["listen", "Start or end a call"], ["ask", "Reply"], ["toggleWindow", "Show or hide"]]
     .map(([a, label]) => `<span>${keycaps(k[a], true)} ${label}</span>`)
     .join("");
   $("listenBtn").title = `Listen to your call so answers can use what's said (${plainKeys(k.listen)})`;
@@ -352,13 +361,23 @@ function renderStage() {
   $("jdSame").textContent = hasJob ? "Same brief" : "Not now";
   $("jdSame").hidden = false;
   $("jdNew").textContent = hasJob ? "Edit brief" : "Add brief";
-  $("welcome").hidden = covered || view !== "answers" || answers.length > 0 || inCall;
-  $("answer").hidden = covered || view !== "answers" || page < 0;
+  $("wrap").hidden = covered || view !== "answers" || !wrapOpen;
+  const home = !covered && view === "answers" && !wrapOpen && !inCall && !state.listening && answers.length === 0;
+  $("welcome").hidden = !home;
+  if (home) renderHome();
+  document.body.classList.toggle("idle", home);
+  // The question box is for a live call (or Meeting mode), not the home
+  // screen, Settings or the forms.
+  document.body.classList.toggle("no-dock", state.style === "sales" && !state.listening && !inCall && !(view === "answers" && !covered && answers.length > 0 && !wrapOpen));
+  document.body.classList.toggle("wrapping", !$("wrap").hidden);
+  document.body.classList.toggle("sales", state.style === "sales");
+  $("chips").hidden = covered || view !== "answers" || wrapOpen || !(state.listening && state.style === "sales");
+  $("answer").hidden = covered || view !== "answers" || page < 0 || wrapOpen;
   $("transcript").hidden = covered || view !== "transcript";
   // After the first answer, the full guide shrinks to one line of hints.
   const guided = hasSeenAnswer();
   $("guide").hidden = guided;
-  $("hints").hidden = !guided;
+  $("hints").hidden = !guided && !home; // home shows the one-line hints, not the full guide
 
   const a = answers[page];
   if (a && !$("answer").hidden) {
@@ -805,6 +824,8 @@ g.on("state", (s) => {
   // the call, so it's neither shown nor auto-answered when Listen starts again.
   // (Except the one an Answer press is still waiting on: see submit.)
   if (wasListening && !s.listening) {
+    // A sales call just ended with the prospect heard: wrap it up.
+    if (s.style === "sales" && s.transcriptCount > 0 && !s.practice?.active) openWrap();
     if (!waitingForQuestion) pendingQuestion = null;
     lastAutoQuestion = null;
     stopWatching();
@@ -2052,8 +2073,6 @@ $("caption").addEventListener("click", (e) => {
 
 // ---------------------------------------------------------------------------
 // Practice calls (see practice.js in the main process).
-let practicePick = null; // persona chosen in the setup panel
-let practiceLines = []; // this practice call's lines, for the call view
 function renderPracticeSetup() {
   practicePick ??= state.practicePersona || "skeptical";
   $("personaCards").innerHTML = (state.personas || [])
@@ -2187,8 +2206,10 @@ function renderStats(st) {
   const max = Math.max(1, ...st.outcomes.map((o) => o.count));
   $("outcomeHead").hidden = $("outcomeBars").hidden = !st.outcomes.length;
   $("outcomeBars").innerHTML = st.outcomes
-    .map((o) => `<li><span class="ob-name">${escapeHtml(o.label)}</span><span class="ob-bar ${o.key}" style="--w:${Math.round((100 * o.count) / max)}%"></span><span class="ob-count">${o.count}</span></li>`)
+    .map((o) => `<li><span class="ob-name">${escapeHtml(o.label)}</span><span class="ob-bar ${o.key}" data-w="${Math.round((100 * o.count) / max)}"></span><span class="ob-count">${o.count}</span></li>`)
     .join("");
+  // Set through the CSSOM: the page's policy blocks inline style attributes.
+  for (const bar of $("outcomeBars").querySelectorAll(".ob-bar")) bar.style.setProperty("--w", `${bar.dataset.w}%`);
   const pr = st.practice;
   $("practiceHead").hidden = $("practiceStats").hidden = !pr.sessions;
   $("practiceStats").textContent = pr.sessions
@@ -2229,4 +2250,87 @@ $("hubspotForm").addEventListener("submit", async (e) => {
   const token = $("hubspotToken").value.trim();
   if (token) await g.setHubSpotToken(token);
   closePanel();
+});
+
+
+// ---------------------------------------------------------------------------
+// The call console: home before a call, the wrap-up after it.
+function briefTitle() {
+  const first = (state.productBrief || "").split("\n").map((l) => l.trim()).find(Boolean) || "";
+  return first.replace(/^product\s*:\s*/i, "");
+}
+function renderHome() {
+  const title = briefTitle();
+  $("homeBriefText").textContent = title || "No product brief yet. Add one so replies know what you sell.";
+  $("homeBrief").classList.toggle("missing", !title);
+  $("homeBriefEdit").textContent = title ? "Edit" : "Add";
+  $("homeCall").disabled = !state.hasKey;
+  $("homeCallKeys").textContent = plainKeys(state.shortcuts?.listen || "");
+  const st = homeStats;
+  $("homeToday").hidden = !st || (!st.calls && !st.practice?.sessions);
+  if (st) {
+    const pct = st.today.calls ? `${Math.round((100 * st.today.booked) / st.today.calls)}%` : "–";
+    $("homeNumbers").innerHTML = [
+      [st.today.calls, st.today.calls === 1 ? "call today" : "calls today"],
+      [st.today.booked, "booked"],
+      [pct, "booked rate"],
+    ].map(([v, l]) => `<span class="ht-num"><b>${v}</b>${l}</span>`).join("");
+    const top = st.objections[0];
+    $("homeTop").textContent = top ? `Top objection: ${top.label} (${top.count}). Booked after it ${top.bookedRate ?? 0}% of the time.` : "";
+  }
+}
+async function refreshHomeStats() {
+  try {
+    homeStats = await g.getStats();
+  } catch {
+    homeStats = null;
+  }
+  if (!$("welcome").hidden) renderHome();
+}
+refreshHomeStats();
+$("homeBrief").addEventListener("click", () => openDoc("productBrief"));
+$("homeCall").addEventListener("click", () => g.toggleListening());
+$("homePractice").addEventListener("click", () => openPanel("practice"));
+
+$("chips").addEventListener("click", (e) => {
+  const line = e.target.closest("[data-line]")?.dataset.line;
+  if (!line) return;
+  pendingQuestion = null;
+  g.ask(line);
+});
+
+function openWrap() {
+  wrapOpen = true;
+  wrapOutcome = null;
+  $("wrapMeeting").value = "";
+  $("wrapNext").value = "";
+  for (const b of $("outcomes").querySelectorAll("button")) b.setAttribute("aria-checked", "false");
+  const ms = state.listeningSince ? Date.now() - state.listeningSince : 0;
+  $("wrapMeta").textContent = `${state.transcriptCount} ${state.transcriptCount === 1 ? "line" : "lines"} heard${ms > 1000 ? `, ${formatElapsed(ms)}` : ""}. ${state.hubspotEnabled ? "Saving logs it to HubSpot too." : "Saved to your call log."}`;
+}
+function closeWrap() {
+  wrapOpen = false;
+  answers = [];
+  page = -1;
+  $("transcript").querySelectorAll(".line").forEach((n) => n.remove());
+  render();
+  refreshHomeStats();
+}
+$("outcomes").addEventListener("click", (e) => {
+  const v = e.target.closest("[data-outcome]")?.dataset.outcome;
+  if (!v) return;
+  wrapOutcome = wrapOutcome === v ? null : v;
+  for (const b of $("outcomes").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.outcome === wrapOutcome));
+  $("wrapMeeting").closest("label").hidden = !!wrapOutcome && wrapOutcome !== "booked" && wrapOutcome !== "follow_up";
+});
+$("wrap").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("wrapSave").disabled = true;
+  const saved = await g.saveCall({ outcome: wrapOutcome, meeting: $("wrapMeeting").value.trim(), nextStep: $("wrapNext").value.trim() });
+  $("wrapSave").disabled = false;
+  if (saved) closeWrap();
+});
+$("wrapSkip").addEventListener("click", async () => {
+  await g.nextCall();
+  closeWrap();
 });
