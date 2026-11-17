@@ -222,7 +222,7 @@ Fix the prompt from the scorecards' "work on" feedback and repeat. Compare again
 
 ## Checklist
 
-- [ ] 1. Redaction, with tests
+- [x] 1. Redaction, with tests
 - [ ] 2. Support style and knowledge base
 - [ ] 3. Support UI
 - [ ] 4. Wrap-up, records, stats

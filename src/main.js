@@ -15,6 +15,7 @@ import { DEFAULT_BASE_URL, downloadModel, MODEL, modelPath, modelPresent, modelS
 import { extractResume, RESUME_EXTENSIONS } from "./resume.js";
 import { appBundle, canReplace, checkForUpdate, downloadUpdate, RELEASES_REPO, RELEASES_URL, removeUpdateLeftovers, stageUpdate, SWAP_SCRIPT, UpdateError } from "./update.js";
 import { isBackchannel, isPromptHallucination } from "./transcript.js";
+import { redact } from "./redact.js";
 import { answerSystemPrompt, ask, compressInstructions, describeError, isNoAnswer, splitKeys, summarizeSession } from "./assistant.js";
 import { ANTHROPIC_MODELS, createProvider, DEFAULT_ANTHROPIC_MODEL, isAbort, MOST_CAPABLE_ANTHROPIC_MODEL, PROVIDERS, supportsEffort } from "./providers.js";
 
@@ -836,7 +837,7 @@ async function runAsk(question, { heard = false, heardAt = null, hard = false, d
   lastAskOrPrewarmAt = Date.now();
   const llm = provider();
   const id = nextId++;
-  const q = (question || "").trim();
+  const q = scrub((question || "").trim());
   let cancelled = false;
   // Cancellable from the start, including while the screenshot is taken.
   // checking: a gated ask that hasn't decided yet. It isn't shown as busy, so
@@ -1405,7 +1406,18 @@ const refreshHotwords = () => {
 };
 
 // A transcribed segment from Listener.
+// Card, ID and bank numbers are blanked here, on the Mac, before a line is
+// shown, saved or sent anywhere (see redact.js). The log gets counts only.
+let lastHeardText = "";
+function scrub(text, previous = "") {
+  const { text: clean, counts } = redact(text, { previous });
+  if (Object.keys(counts).length) log(`redacted ${Object.entries(counts).map(([k, n]) => `${k}=${n}`).join(" ")}`);
+  return clean;
+}
+
 function heard(line, keep) {
+  line.text = scrub(line.text, lastHeardText);
+  lastHeardText = line.text;
   log(`heard: durMs=${line.at - line.start} transcribeMs=${line.transcribeMs} decodeMs=${line.decodeMs} waitMs=${line.transcribedAt - line.at} queued=${line.queued} via=${line.via} words=${line.text.trim().split(/\s+/).length} text="${line.text.slice(0, 80)}"`);
   if (isBackchannel(line.text)) return;
   if (isPromptHallucination(line.text, hotwords())) return;
@@ -1578,7 +1590,7 @@ ipcMain.handle("still-hearing", () => !!listener?.hearing());
 // place of the suggestion. Empty clears it.
 ipcMain.handle("set-said", (_e, id, text) => {
   const a = answers.find((x) => x.id === id);
-  if (a) a.said = String(text ?? "").trim().slice(0, 1000) || undefined;
+  if (a) a.said = scrub(String(text ?? "").trim().slice(0, 1000)) || undefined;
 });
 ipcMain.handle("toggle-listening", () => toggleListening());
 // Test mode only: a segment as if Listener had just transcribed it with the
@@ -1788,7 +1800,7 @@ ipcMain.handle("test-hubspot", async (_e, token) => {
 ipcMain.handle("start-practice", (_e, persona) => startPractice(persona));
 ipcMain.handle("end-practice", () => endPractice());
 ipcMain.handle("practice-say", (_e, text) => {
-  const t = String(text ?? "").replace(/\s+/g, " ").trim().slice(0, 1000);
+  const t = scrub(String(text ?? "").replace(/\s+/g, " ").trim().slice(0, 1000));
   if (!practice.active || !t) return;
   stopSpeaking(); // talking over the prospect cuts them off, as on a real call
   const now = Date.now();

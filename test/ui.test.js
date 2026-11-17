@@ -1438,6 +1438,22 @@ test("who you're calling: typed on home, sent with every Sales reply, cleared wh
   assert.equal(await run(`return document.getElementById("tgName").value;`), "", "cleared for the next dial");
 });
 
+test("card numbers are blanked on the Mac before they're shown, saved or sent", { skip }, async () => {
+  await run(`await g.clear(); await g.setSetting("style", "sales");`);
+  await run(`await g.testHeard({ text: "Sure, my card number is 4242 4242 4242 4242 and the security code is 737.", keep: true });`);
+  await until(`state.transcriptCount === 1`);
+  const before = requests.length;
+  await run(`state.listening = true; render(); document.querySelector('#chips [data-next="pitch"]').click();`);
+  await until(`answers.length >= 1 && answers.at(-1).status === "done"`);
+  const sent = JSON.stringify(requests.slice(before));
+  assert.ok(!sent.includes("4242 4242"), "the full card never reaches the model");
+  assert.ok(!sent.includes("737"), "nor the security code");
+  assert.match(sent, /\[card ending 4242\]/);
+  assert.ok(!readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8").includes("4242 4242"), "nor the log");
+  assert.match(readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8"), /redacted card=1 cvv=1/);
+  await run(`state.listening = false; await g.clear(); answers = []; page = -1; render();`);
+});
+
 test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {
   const { existsSync } = await import("node:fs");
   assert.ok(existsSync(path.join(dir, "config.json")));
