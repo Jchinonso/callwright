@@ -1,6 +1,6 @@
 // The speech engine's own process (see asr.js): NVIDIA Parakeet TDT 0.6B v2
 // (English, int8) through sherpa-onnx, on the CPU. A decode takes most of a
-// second of CPU, so it never runs in Dialpal's main process, and a crash here
+// second of CPU, so it never runs in Callwright's main process, and a crash here
 // only stops this process.
 //
 // Messages in:  { type: "load", modelDir, hotwords }
@@ -24,13 +24,13 @@ const port = process.parentPort
   ? { on: (fn) => process.parentPort.on("message", (e) => fn(e.data)), send: (m) => process.parentPort.postMessage(m) }
   : { on: (fn) => process.on("message", fn), send: (m) => process.send(m) };
 
-const vocabPath = path.join(os.tmpdir(), `dialpal-hotwords-${process.pid}.vocab`);
+const vocabPath = path.join(os.tmpdir(), `callwright-hotwords-${process.pid}.vocab`);
 process.on("exit", () => rmSync(vocabPath, { force: true }));
 
-// sherpa-onnx, or a stand-in module named by DIALPAL_TEST_ASR (tests never
+// sherpa-onnx, or a stand-in module named by CALLWRIGHT_TEST_ASR (tests never
 // load the real model). Both have create(config) -> { decode(samples, hotwords) }.
 async function engine() {
-  if (process.env.DIALPAL_TEST_ASR) return import(pathToFileURL(process.env.DIALPAL_TEST_ASR).href);
+  if (process.env.CALLWRIGHT_TEST_ASR) return import(pathToFileURL(process.env.CALLWRIGHT_TEST_ASR).href);
   const sherpa = createRequire(import.meta.url)("sherpa-onnx-node");
   return {
     create({ modelDir, bpeVocab }) {

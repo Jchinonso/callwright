@@ -9,7 +9,7 @@ import { Asr } from "../src/asr.js";
 const FAKE = new URL("./fixtures/fake-asr.mjs", import.meta.url).pathname;
 
 function modelDir() {
-  const dir = mkdtempSync(`${os.tmpdir()}/dialpal-asr-`);
+  const dir = mkdtempSync(`${os.tmpdir()}/callwright-asr-`);
   copyFileSync(new URL("./fixtures/parakeet-tokens.txt", import.meta.url), `${dir}/tokens.txt`);
   return dir;
 }
@@ -18,7 +18,7 @@ const pcm = (samples) => Buffer.alloc(samples * 2, 1);
 
 test("loads once, then transcribes with the hotwords", async () => {
   const dir = modelDir();
-  const asr = new Asr({ modelDir: dir, env: { DIALPAL_TEST_ASR: FAKE } });
+  const asr = new Asr({ modelDir: dir, env: { CALLWRIGHT_TEST_ASR: FAKE } });
   const states = [];
   asr.on("state", (s) => states.push(s));
   try {
@@ -38,7 +38,7 @@ test("loads once, then transcribes with the hotwords", async () => {
 
 test("transcribe loads the model itself when needed", async () => {
   const dir = modelDir();
-  const asr = new Asr({ modelDir: dir, env: { DIALPAL_TEST_ASR: FAKE, FAKE_ASR_TEXT: "Sure." } });
+  const asr = new Asr({ modelDir: dir, env: { CALLWRIGHT_TEST_ASR: FAKE, FAKE_ASR_TEXT: "Sure." } });
   try {
     assert.equal((await asr.transcribe(pcm(100))).text, "Sure.");
   } finally {
@@ -49,7 +49,7 @@ test("transcribe loads the model itself when needed", async () => {
 
 test("a crash fails only the piece in flight; the engine restarts for the next", async () => {
   const dir = modelDir();
-  const asr = new Asr({ modelDir: dir, env: { DIALPAL_TEST_ASR: FAKE, FAKE_ASR_TEXT: "ok" } });
+  const asr = new Asr({ modelDir: dir, env: { CALLWRIGHT_TEST_ASR: FAKE, FAKE_ASR_TEXT: "ok" } });
   const crashes = [];
   asr.on("crash", (r) => crashes.push(r));
   try {
@@ -67,7 +67,7 @@ test("a crash fails only the piece in flight; the engine restarts for the next",
 
 test("a model that won't load is tried a few times, then the engine stays off", async () => {
   const dir = modelDir();
-  const asr = new Asr({ modelDir: dir, env: { DIALPAL_TEST_ASR: FAKE, FAKE_ASR_FAIL_LOAD: "1" } });
+  const asr = new Asr({ modelDir: dir, env: { CALLWRIGHT_TEST_ASR: FAKE, FAKE_ASR_FAIL_LOAD: "1" } });
   const logs = [];
   asr.on("log", (l) => logs.push(l));
   try {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:" />
-    <title>Dialpal</title>
+    <title>Callwright</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -12,10 +12,10 @@
 
       <header class="bar">
         <div class="grip" title="Drag to move">
-          <span class="mark">dialpal</span>
+          <span class="mark">callwright</span>
         </div>
         <div class="actions">
-          <button class="pill listen" id="listenBtn" title="Start the call: Dialpal listens to the prospect (⌘⇧\)">
+          <button class="pill listen" id="listenBtn" title="Start the call: Callwright listens to the prospect (⌘⇧\)">
             <span class="pulse" aria-hidden="true"></span>
             <span class="label idle-label">Start call</span>
             <span class="label live-label">On call</span>
@@ -39,10 +39,10 @@
           <button class="icon" id="menuBtn" title="Settings" aria-expanded="false">
             <svg class="gear" viewBox="0 0 20 20" aria-hidden="true"><path d="M17.878 8.611A8 8 0 0 1 17.878 11.389L16.113 11.524A6.3 6.3 0 0 1 15.4 13.245L16.553 14.589A8 8 0 0 1 14.589 16.553L13.245 15.4A6.3 6.3 0 0 1 11.524 16.113L11.389 17.878A8 8 0 0 1 8.611 17.878L8.476 16.113A6.3 6.3 0 0 1 6.755 15.4L5.411 16.553A8 8 0 0 1 3.447 14.589L4.6 13.245A6.3 6.3 0 0 1 3.887 11.524L2.122 11.389A8 8 0 0 1 2.122 8.611L3.887 8.476A6.3 6.3 0 0 1 4.6 6.755L3.447 5.411A8 8 0 0 1 5.411 3.447L6.755 4.6A6.3 6.3 0 0 1 8.476 3.887L8.611 2.122A8 8 0 0 1 11.389 2.122L11.524 3.887A6.3 6.3 0 0 1 13.245 4.6L14.589 3.447A8 8 0 0 1 16.553 5.411L15.4 6.755A6.3 6.3 0 0 1 16.113 8.476ZM12.4 10A2.4 2.4 0 1 1 7.6 10A2.4 2.4 0 1 1 12.4 10Z" /></svg>
           </button>
-          <button class="icon" id="hideTopBtn" title="Hide Dialpal (⌘\). Bring it back from the menu bar icon.">
+          <button class="icon" id="hideTopBtn" title="Hide Callwright (⌘\). Bring it back from the menu bar icon.">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" /></svg>
           </button>
-          <button class="icon close" id="quitTopBtn" title="Quit Dialpal" aria-label="Quit Dialpal">
+          <button class="icon close" id="quitTopBtn" title="Quit Callwright" aria-label="Quit Callwright">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9" /></svg>
           </button>
         </div>
@@ -68,10 +68,10 @@
           </div>
           <div class="ob-step" data-step="welcome">
             <h1 class="ob-title">Your next line, while they're still talking</h1>
-            <p class="ob-lead">Dialpal sits on top of your screen during sales calls. When the prospect talks, it shows you the next line to say.</p>
+            <p class="ob-lead">Callwright sits on top of your screen during sales calls. When the prospect talks, it shows you the next line to say.</p>
             <dl class="ob-features">
               <dt>It catches the pushback</dt>
-              <dd>Dialpal follows the call on your Mac and flags questions and objections as the prospect says them.</dd>
+              <dd>Callwright follows the call on your Mac and flags questions and objections as the prospect says them.</dd>
               <dt>Your next line in seconds</dt>
               <dd>One sentence to say and one question to ask, built from what they said and your product brief.</dd>
               <dt>It never makes things up</dt>
@@ -81,7 +81,7 @@
           </div>
           <div class="ob-step" data-step="speech">
             <h1 class="ob-title">Download the speech model</h1>
-            <p class="ob-lead" id="obSpeechLead">Dialpal needs this to transcribe calls. This one-time download is about 660 MB.</p>
+            <p class="ob-lead" id="obSpeechLead">Callwright needs this to transcribe calls. This one-time download is about 660 MB.</p>
             <div class="ob-progress" id="obSpeechProgress">
               <div class="ob-progress-bar"><span id="obSpeechFill"></span></div>
               <span class="ob-progress-label" id="obSpeechMeta"></span>
@@ -93,7 +93,7 @@
           <div class="ob-step" data-step="about">
             <p class="lead">Who's calling</p>
             <p class="hint" id="obAboutHint">For openers, and when a prospect asks who's calling. Change it later in Settings &gt; Calls.</p>
-            <span class="ob-label">What will you use Dialpal for?</span>
+            <span class="ob-label">What will you use Callwright for?</span>
             <div class="seg" id="obUse" role="radiogroup">
               <button type="button" role="radio" data-value="sales">Sales calls</button>
               <button type="button" role="radio" data-value="meetings">Meetings</button>
@@ -115,7 +115,7 @@
           </div>
           <div class="ob-step" data-step="job">
             <p class="lead">What you sell</p>
-            <p class="hint">Paste your product brief or import it. Replies only claim what's in it. Dialpal asks again at the start of each new call block.</p>
+            <p class="hint">Paste your product brief or import it. Replies only claim what's in it. Callwright asks again at the start of each new call block.</p>
             <div class="ob-labelrow">
               <span class="ob-label">Product brief</span>
               <button type="button" class="ghost small" id="obJobImport">Import file…</button>
@@ -126,13 +126,13 @@
             <p class="lead">You're set</p>
             <div class="group">
               <button type="button" class="row" id="obCloak" role="switch">
-                <div class="row-text"><span>Hide from screen sharing</span><small>Keeps Dialpal out of what the other side sees if you share your screen, and out of the Dock</small></div>
+                <div class="row-text"><span>Hide from screen sharing</span><small>Keeps Callwright out of what the other side sees if you share your screen, and out of the Dock</small></div>
                 <span class="switch" aria-hidden="true"></span>
               </button>
             </div>
             <ul class="ob-points">
-              <li>When the call starts, press <strong>Listen</strong> (<span id="obListenKey"></span>). macOS asks for screen and audio access the first time: allow it, then reopen Dialpal once, since macOS only sends audio after a reopen.</li>
-              <li>In Sales mode, Dialpal shows your reply on its own once the prospect finishes talking. Any time, you can press <strong>Answer</strong> (<span id="obAskKey"></span>) or type a question.</li>
+              <li>When the call starts, press <strong>Listen</strong> (<span id="obListenKey"></span>). macOS asks for screen and audio access the first time: allow it, then reopen Callwright once, since macOS only sends audio after a reopen.</li>
+              <li>In Sales mode, Callwright shows your reply on its own once the prospect finishes talking. Any time, you can press <strong>Answer</strong> (<span id="obAskKey"></span>) or type a question.</li>
               <li>Everything here lives in Settings, the gear at the top.</li>
             </ul>
           </div>
@@ -152,7 +152,7 @@
             </span>
           </div>
           <div class="jd-cloak" id="jdCloak" hidden>
-            <span>Dialpal is visible when you share your screen.</span>
+            <span>Callwright is visible when you share your screen.</span>
             <button type="button" class="textlink" id="jdCloakFix">Hide it</button>
           </div>
         </div>
@@ -242,7 +242,7 @@
                 <span class="switch" aria-hidden="true"></span>
               </button>
               <button class="row" id="openAtLoginToggle" role="switch">
-                <div class="row-text"><span>Start Dialpal when I log in</span><small>Loads Dialpal silently at login so it's ready before any other app starts.</small></div>
+                <div class="row-text"><span>Start Callwright when I log in</span><small>Loads Callwright silently at login so it's ready before any other app starts.</small></div>
                 <span class="switch" aria-hidden="true"></span>
               </button>
             </div>
@@ -276,7 +276,7 @@
             </div>
             <p class="tab-note" id="salesOffNote" hidden>Sales replies are off: answers are plain, not lines to say, and there's no wrap-up after a call.</p>
             <div class="callout" id="cloakWarn" hidden>
-              <span>Dialpal shows up if you share your screen.</span>
+              <span>Callwright shows up if you share your screen.</span>
               <button type="button" class="ghost" id="cloakFix">Hide it</button>
             </div>
             <div hidden>
@@ -292,11 +292,11 @@
                 <span class="row-meta" id="spendTotal"></span>
               </div>
               <button class="row link" id="transcriptToggle">
-                <div class="row-text"><span>Transcript</span><small id="transcriptMeta">What Dialpal has heard so far</small></div>
+                <div class="row-text"><span>Transcript</span><small id="transcriptMeta">What Callwright has heard so far</small></div>
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
               </button>
               <button class="row link" id="saveNotesBtn">
-                <div class="row-text"><span>Save notes</span><small id="saveNotesMeta">Summary, decisions, action items and full transcript, to Documents/Dialpal</small></div>
+                <div class="row-text"><span>Save notes</span><small id="saveNotesMeta">Summary, decisions, action items and full transcript, to Documents/Callwright</small></div>
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12" /></svg></span>
               </button>
               <button class="row link" id="statsBtn">
@@ -336,7 +336,7 @@
                 </div>
               </div>
               <label class="row stacked" for="vocabularyInput">
-                <div class="row-text"><span>Words to recognize</span><small>Names, products and jargon Dialpal should listen for, separated by commas</small></div>
+                <div class="row-text"><span>Words to recognize</span><small>Names, products and jargon Callwright should listen for, separated by commas</small></div>
                 <input id="vocabularyInput" maxlength="500" placeholder="e.g. Priya, Ledgerly, pgvector" spellcheck="false" />
               </label>
             </div>
@@ -344,7 +344,7 @@
             <h2>Privacy</h2>
             <div class="group">
               <button class="row" id="cloakToggle" role="switch">
-                <div class="row-text"><span>Hide from screen sharing</span><small>Leaves Dialpal out of shares, recordings, screenshots and the Dock (⌘⇧H). Off: Dialpal shows in the Dock.</small></div>
+                <div class="row-text"><span>Hide from screen sharing</span><small>Leaves Callwright out of shares, recordings, screenshots and the Dock (⌘⇧H). Off: Callwright shows in the Dock.</small></div>
                 <span class="switch" aria-hidden="true"></span>
               </button>
             </div>
@@ -356,7 +356,7 @@
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
               </button>
               <button class="row link" id="shortcutsBtn">
-                <div class="row-text"><span>Shortcuts</span><small>Change the keys Dialpal listens for anywhere</small></div>
+                <div class="row-text"><span>Shortcuts</span><small>Change the keys Callwright listens for anywhere</small></div>
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
               </button>
             </div>
@@ -364,13 +364,13 @@
             <h2>Your data</h2>
             <div class="group">
               <button class="row link" id="wipeBtn">
-                <div class="row-text"><span>Delete all Dialpal data</span><small>API keys, settings, product brief, details and logs. Do this before uninstalling.</small></div>
+                <div class="row-text"><span>Delete all Callwright data</span><small>API keys, settings, product brief, details and logs. Do this before uninstalling.</small></div>
                 <span class="row-meta"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg></span>
               </button>
             </div>
 
             <div class="settings-foot">
-              <button class="ghost danger" id="quitBtn">Quit Dialpal</button>
+              <button class="ghost danger" id="quitBtn">Quit Callwright</button>
             </div>
           </div>
 
@@ -378,7 +378,7 @@
             <div class="group">
               <div class="row">
                 <img class="about-logo" src="logo.png" alt="" width="40" height="40" />
-                <div class="row-text about-text"><span>Dialpal</span><small>Listens to your sales calls and shows you the next line to say.</small></div>
+                <div class="row-text about-text"><span>Callwright</span><small>Listens to your sales calls and shows you the next line to say.</small></div>
                 <span class="row-meta" id="aboutVersion"></span>
               </div>
               <button class="row link" id="updateCheckBtn">
@@ -409,11 +409,11 @@
         <form class="instructions" id="instructionsForm" hidden>
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
           <p class="lead">Custom instructions</p>
-          <p class="hint">Added to Dialpal's built-in instructions on every question. Tell it how you like answers: tone, length, language, what to focus on, things to avoid. Longer instructions are compressed when you save, so each question sends fewer tokens.</p>
+          <p class="hint">Added to Callwright's built-in instructions on every question. Tell it how you like answers: tone, length, language, what to focus on, things to avoid. Longer instructions are compressed when you save, so each question sends fewer tokens.</p>
           <p class="hint caution" id="instructionsFormWarn" hidden>This looks like a resume. Paste it under Settings &gt; Calls &gt; About you instead: custom instructions are compressed when saved, which rewrites wording; Resume is sent word for word.</p>
           <textarea id="instructionsInput" rows="8" maxlength="12000" spellcheck="true" placeholder="For example: Answer in British English. Never offer a discount on the first call. Always ask for a 20-minute demo, not a 30-minute one. Call the product Acme, never Acme AI."></textarea>
           <details class="sent" id="sentBox" hidden>
-            <summary id="sentSummary">What Dialpal sends</summary>
+            <summary id="sentSummary">What Callwright sends</summary>
             <pre id="sentText"></pre>
           </details>
           <div class="formrow">
@@ -446,15 +446,15 @@
 
         <form class="instructions" id="wipeForm" hidden>
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
-          <p class="lead">Delete all Dialpal data</p>
-          <p class="hint">Removes everything Dialpal keeps on this Mac, then quits. Dragging Dialpal to the Trash doesn't remove these, so do this first.</p>
+          <p class="lead">Delete all Callwright data</p>
+          <p class="hint">Removes everything Callwright keeps on this Mac, then quits. Dragging Callwright to the Trash doesn't remove these, so do this first.</p>
           <ul class="ob-points">
             <li>Your API keys, from the macOS keychain</li>
             <li>Settings, about you, product brief and your details</li>
             <li>Logs</li>
           </ul>
-          <label class="check"><input type="checkbox" id="wipeNotes" /> Also move my saved meeting notes (Documents/Dialpal) to the Trash</label>
-          <p class="hint">This can't be undone. To remove Dialpal's screen and audio permission, open System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording.</p>
+          <label class="check"><input type="checkbox" id="wipeNotes" /> Also move my saved meeting notes (Documents/Callwright) to the Trash</label>
+          <p class="hint">This can't be undone. To remove Callwright's screen and audio permission, open System Settings › Privacy &amp; Security › Screen &amp; System Audio Recording.</p>
           <div class="formrow">
             <button type="button" class="ghost" id="wipeCancel">Cancel</button>
             <button type="submit" class="primary alarm" id="wipeConfirm">Delete and quit</button>
@@ -593,7 +593,7 @@
             <label>Meeting<input id="wrapMeeting" maxlength="200" placeholder="e.g. Tuesday 2pm with Priya" autocomplete="off" /></label>
             <label>Next step<input id="wrapNext" maxlength="200" placeholder="e.g. send the invite and case study" autocomplete="off" /></label>
           </div>
-          <p class="hint">Leave anything blank and Dialpal fills it in from the call.</p>
+          <p class="hint">Leave anything blank and Callwright fills it in from the call.</p>
           <div class="formrow">
             <button type="button" class="ghost" id="wrapSkip">Don't save</button>
             <button type="submit" class="primary" id="wrapSave">Save call</button>
@@ -661,7 +661,7 @@
         <form class="instructions" id="hubspotForm" hidden>
           <button type="button" class="back" data-back hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>Settings</button>
           <p class="lead">HubSpot</p>
-          <p class="hint">Each time you save notes after a real call, Dialpal logs it in HubSpot as a call with the outcome, objections and next step, on the contact when their email came up. Practice calls are never sent.</p>
+          <p class="hint">Each time you save notes after a real call, Callwright logs it in HubSpot as a call with the outcome, objections and next step, on the contact when their email came up. Practice calls are never sent.</p>
           <p class="hint">Create a private app in HubSpot (Settings › Integrations › Private apps) with the scopes <strong>crm.objects.calls.write</strong> and <strong>crm.objects.contacts.read</strong>, then paste its token. It's kept in your macOS keychain.</p>
           <div class="ob-grid">
             <label>Private app token<input id="hubspotToken" type="password" class="mono" autocomplete="off" spellcheck="false" placeholder="pat-…" /></label>

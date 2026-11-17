@@ -48,7 +48,7 @@ function sendRange(req, res, data) {
 }
 
 test("downloads every file, verifies them, and reports progress over the whole model", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   const { url, close } = await serve((req, res) => (bytesFor(req) ? sendRange(req, res, bytesFor(req)) : res.writeHead(404).end()));
   try {
     const progress = [];
@@ -68,7 +68,7 @@ test("downloads every file, verifies them, and reports progress over the whole m
 });
 
 test("an interrupted download keeps the .part and resumes with Range", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   const ranges = [];
   let first = true;
   const { url, close } = await serve((req, res) => {
@@ -98,7 +98,7 @@ test("an interrupted download keeps the .part and resumes with Range", async () 
 });
 
 test("a stalled download times out, keeps the .part and resumes", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   const held = [];
   const stalled = await serve((req, res) => {
     res.writeHead(200, { "content-type": "application/octet-stream", "content-length": String(DATA.length) });
@@ -125,7 +125,7 @@ test("a stalled download times out, keeps the .part and resumes", async () => {
 });
 
 test("a wrong checksum deletes the .part and throws", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   const { url, close } = await serve((req, res) => sendRange(req, res, bytesFor(req)));
   try {
     await assert.rejects(downloadModel({ root, baseUrl: url, model: model({ sha256: "0".repeat(64) }) }), {
@@ -140,7 +140,7 @@ test("a wrong checksum deletes the .part and throws", async () => {
 });
 
 test("files copied in by hand are accepted after their checksum; a changed file is caught and removed", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   const dir = path.join(root, "test-model");
   try {
     assert.equal(modelPresent(root, model()), false);
@@ -169,7 +169,7 @@ test("files copied in by hand are accepted after their checksum; a changed file 
 });
 
 test("old speech models (whisper.cpp, WhisperKit) are removed from the models folder, and nothing else", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dialpal-models-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "callwright-models-"));
   try {
     await writeFile(path.join(root, "ggml-small.en.bin"), Buffer.alloc(3000));
     await writeFile(path.join(root, "ggml-base.en.bin"), Buffer.alloc(2000));

@@ -9,9 +9,9 @@ import path from "node:path";
 import { appBundle, canReplace, checkForUpdate, downloadUpdate, isNewer, pickUpdate, removeUpdateLeftovers, SWAP_SCRIPT, UpdateError } from "../src/update.js";
 
 const sha = (data) => createHash("sha256").update(data).digest("hex");
-const base = "https://github.com/Jchinonso/dialpal/releases/download";
+const base = "https://github.com/Jchinonso/callwright/releases/download";
 const release = (version, assets) => ({ tag_name: `v${version}`, html_url: "https://example.com/elsewhere", assets });
-const dmg = (version, arch, extra = {}) => ({ name: `Dialpal-${version}-${arch}.dmg`, size: 10, digest: `sha256:${"a".repeat(64)}`, browser_download_url: `${base}/v${version}/Dialpal-${version}-${arch}.dmg`, ...extra });
+const dmg = (version, arch, extra = {}) => ({ name: `Callwright-${version}-${arch}.dmg`, size: 10, digest: `sha256:${"a".repeat(64)}`, browser_download_url: `${base}/v${version}/Callwright-${version}-${arch}.dmg`, ...extra });
 
 test("isNewer compares versions by number, not as text", () => {
   assert.equal(isNewer("1.10.0", "1.9.9"), true);
@@ -22,11 +22,11 @@ test("isNewer compares versions by number, not as text", () => {
 
 test("pickUpdate: the DMG for this chip, only when newer, checksummed and from the releases", () => {
   const r = release("1.7.0", [dmg("1.7.0", "arm64"), dmg("1.7.0", "x64")]);
-  assert.deepEqual(pickUpdate(r, { current: "1.6.2", arch: "x64" }), { version: "1.7.0", url: `${base}/v1.7.0/Dialpal-1.7.0-x64.dmg`, size: 10, sha256: "a".repeat(64), page: "https://github.com/Jchinonso/dialpal/releases/tag/v1.7.0" });
+  assert.deepEqual(pickUpdate(r, { current: "1.6.2", arch: "x64" }), { version: "1.7.0", url: `${base}/v1.7.0/Callwright-1.7.0-x64.dmg`, size: 10, sha256: "a".repeat(64), page: "https://github.com/Jchinonso/callwright/releases/tag/v1.7.0" });
   assert.equal(pickUpdate(r, { current: "1.7.0", arch: "x64" }), null, "already current");
   assert.equal(pickUpdate(release("1.7.0", [dmg("1.7.0", "arm64")]), { current: "1.6.2", arch: "x64" }), null, "no DMG for this chip");
   assert.equal(pickUpdate(release("1.7.0", [dmg("1.7.0", "x64", { digest: null })]), { current: "1.6.2", arch: "x64" }), null, "no checksum");
-  assert.equal(pickUpdate(release("1.7.0", [dmg("1.7.0", "x64", { browser_download_url: "https://example.com/Dialpal-1.7.0-x64.dmg" })]), { current: "1.6.2", arch: "x64" }), null, "another host");
+  assert.equal(pickUpdate(release("1.7.0", [dmg("1.7.0", "x64", { browser_download_url: "https://example.com/Callwright-1.7.0-x64.dmg" })]), { current: "1.6.2", arch: "x64" }), null, "another host");
   assert.equal(pickUpdate({ ...r, prerelease: true }, { current: "1.6.2", arch: "x64" }), null, "prerelease");
   assert.equal(pickUpdate({ tag_name: "nightly", assets: [] }, { current: "1.6.2", arch: "x64" }), null, "not a version");
 });
@@ -42,7 +42,7 @@ test("downloadUpdate keeps a file that matches its checksum and deletes one that
   const data = Buffer.alloc(300_000, 7);
   const server = http.createServer((_req, res) => res.end(data));
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-test-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-update-test-"));
   const file = path.join(dir, "update.dmg");
   const url = `http://127.0.0.1:${server.address().port}/update.dmg`;
   try {
@@ -63,26 +63,26 @@ test("downloadUpdate keeps a file that matches its checksum and deletes one that
   }
 });
 
-test("appBundle and canReplace: only a Dialpal.app Dialpal can write to", () => {
-  assert.equal(appBundle("/Applications/Dialpal.app/Contents/MacOS/Dialpal"), "/Applications/Dialpal.app");
+test("appBundle and canReplace: only a Callwright.app Callwright can write to", () => {
+  assert.equal(appBundle("/Applications/Callwright.app/Contents/MacOS/Callwright"), "/Applications/Callwright.app");
   assert.equal(appBundle("/x/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"), null);
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-test-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-update-test-"));
   try {
-    const bundle = path.join(dir, "Dialpal.app");
+    const bundle = path.join(dir, "Callwright.app");
     mkdirSync(bundle);
     assert.equal(canReplace(bundle), true);
-    assert.equal(canReplace("/private/var/folders/x/AppTranslocation/ABC/d/Dialpal.app"), false);
-    assert.equal(canReplace(path.join(dir, "missing", "Dialpal.app")), false);
+    assert.equal(canReplace("/private/var/folders/x/AppTranslocation/ABC/d/Callwright.app"), false);
+    assert.equal(canReplace(path.join(dir, "missing", "Callwright.app")), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("the swap script waits for Dialpal to quit, then replaces the app", { skip: process.platform !== "darwin" }, async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-test-"));
+test("the swap script waits for Callwright to quit, then replaces the app", { skip: process.platform !== "darwin" }, async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-update-test-"));
   try {
-    const bundle = path.join(dir, "Dialpal.app");
-    const staged = path.join(dir, ".Dialpal-9.9.9.app");
+    const bundle = path.join(dir, "Callwright.app");
+    const staged = path.join(dir, ".Callwright-9.9.9.app");
     mkdirSync(bundle);
     mkdirSync(staged);
     writeFileSync(path.join(bundle, "version"), "old");
@@ -101,13 +101,13 @@ test("the swap script waits for Dialpal to quit, then replaces the app", { skip:
 });
 
 test("the swap script puts the old app back when the new one can't be moved in", { skip: process.platform !== "darwin" }, async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-test-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-update-test-"));
   try {
-    const bundle = path.join(dir, "Dialpal.app");
+    const bundle = path.join(dir, "Callwright.app");
     mkdirSync(bundle);
     writeFileSync(path.join(bundle, "version"), "old");
     // The staged copy is missing, so moving it in fails.
-    await new Promise((done) => spawn("/bin/sh", ["-c", SWAP_SCRIPT, "sh", "999999", bundle, path.join(dir, ".Dialpal-9.9.9.app")], { stdio: "ignore" }).on("exit", done));
+    await new Promise((done) => spawn("/bin/sh", ["-c", SWAP_SCRIPT, "sh", "999999", bundle, path.join(dir, ".Callwright-9.9.9.app")], { stdio: "ignore" }).on("exit", done));
     assert.equal(readFileSync(path.join(bundle, "version"), "utf8"), "old");
     assert.equal(existsSync(`${bundle}.old`), false);
   } finally {
@@ -116,16 +116,16 @@ test("the swap script puts the old app back when the new one can't be moved in",
 });
 
 test("removeUpdateLeftovers deletes only what an interrupted update leaves", async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-test-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-update-test-"));
   try {
     const apps = path.join(dir, "Applications");
     const temp = path.join(dir, "temp");
-    for (const d of ["Dialpal.app", ".Dialpal-1.7.0.app", ".Dialpal-install.app", ".Dialpal-old.app", "Dialpal.app.old", "Other.app", ".Dialpal-notes.app"]) mkdirSync(path.join(apps, d), { recursive: true });
+    for (const d of ["Callwright.app", ".Callwright-1.7.0.app", ".Callwright-install.app", ".Callwright-old.app", "Callwright.app.old", "Other.app", ".Callwright-notes.app"]) mkdirSync(path.join(apps, d), { recursive: true });
     mkdirSync(temp);
-    for (const f of ["Dialpal-1.7.0-arm64.dmg", "Dialpal-1.7.0-x64.dmg", "Dialpal-notes.dmg", "keep.txt"]) writeFileSync(path.join(temp, f), "x");
-    await removeUpdateLeftovers({ bundle: path.join(apps, "Dialpal.app"), temp });
-    assert.deepEqual(readdirSync(apps).sort(), [".Dialpal-notes.app", "Dialpal.app", "Other.app"]);
-    assert.deepEqual(readdirSync(temp).sort(), ["Dialpal-notes.dmg", "keep.txt"]);
+    for (const f of ["Callwright-1.7.0-arm64.dmg", "Callwright-1.7.0-x64.dmg", "Callwright-notes.dmg", "keep.txt"]) writeFileSync(path.join(temp, f), "x");
+    await removeUpdateLeftovers({ bundle: path.join(apps, "Callwright.app"), temp });
+    assert.deepEqual(readdirSync(apps).sort(), [".Callwright-notes.app", "Callwright.app", "Other.app"]);
+    assert.deepEqual(readdirSync(temp).sort(), ["Callwright-notes.dmg", "keep.txt"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

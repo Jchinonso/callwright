@@ -1,4 +1,4 @@
-// Regenerates the README screenshots in docs/images/: runs Dialpal in test mode
+// Regenerates the README screenshots in docs/images/: runs Callwright in test mode
 // (its own settings folder, no keychain) with a made-up profile and a fake
 // OpenAI-compatible model, walks through the main screens and captures each.
 //   node scripts/screenshots.mjs
@@ -44,10 +44,10 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 
-const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-shots-"));
+const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-shots-"));
 // A made-up call log, so the home screen and stats have numbers.
 {
-  const logDir = path.join(dir, "documents", "Dialpal");
+  const logDir = path.join(dir, "documents", "Callwright");
   mkdirSync(logDir, { recursive: true });
   const today = new Date();
   const at = (h, m) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m).toISOString();
@@ -62,7 +62,7 @@ const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-shots-"));
 writeFileSync(path.join(dir, "config.json"), JSON.stringify({ provider: "openai", openaiBaseUrl: `http://127.0.0.1:${server.address().port}/v1`, openaiModel: "gpt-4o", autoScreen: false, style: "sales", invisible: true, resume: RESUME, productBrief: JOB, profileName: "Sam Lee" }));
 // The speech model is already installed, so setup goes straight past its step:
 // a stand-in (the real tokens.txt and a tiny encoder), with a stand-in engine
-// (DIALPAL_TEST_ASR), as in the UI tests, so the real 660 MB isn't needed.
+// (CALLWRIGHT_TEST_ASR), as in the UI tests, so the real 660 MB isn't needed.
 const modelDir = path.join(dir, "models", MODEL.dir);
 mkdirSync(modelDir, { recursive: true });
 copyFileSync(path.join(root, "test", "fixtures", "parakeet-tokens.txt"), path.join(modelDir, "tokens.txt"));
@@ -71,9 +71,9 @@ const standInFiles = ["encoder.int8.onnx", "tokens.txt"].map((name) => {
   const data = readFileSync(path.join(modelDir, name));
   return { name, size: data.length, sha256: createHash("sha256").update(data).digest("hex") };
 });
-const standIn = { DIALPAL_TEST_MODEL_FILES: JSON.stringify(standInFiles), DIALPAL_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs") };
+const standIn = { CALLWRIGHT_TEST_MODEL_FILES: JSON.stringify(standInFiles), CALLWRIGHT_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs") };
 const port = 9900 + Math.floor(Math.random() * 90);
-const app = spawn(electronPath, [root, `--remote-debugging-port=${port}`, "--force-device-scale-factor=2"], { env: { ...process.env, DIALPAL_TEST_DIR: dir, ANTHROPIC_API_KEY: "sk-ant-placeholder-1234", ...standIn }, stdio: "ignore" });
+const app = spawn(electronPath, [root, `--remote-debugging-port=${port}`, "--force-device-scale-factor=2"], { env: { ...process.env, CALLWRIGHT_TEST_DIR: dir, ANTHROPIC_API_KEY: "sk-ant-placeholder-1234", ...standIn }, stdio: "ignore" });
 
 let page;
 for (let i = 0; i < 100 && !page; i++) {
@@ -170,7 +170,7 @@ rmSync(dir, { recursive: true, force: true });
 
 // The speech model step, part-way through: a separate run with no model, and a
 // local server that sends about 40% of the file and then holds the connection.
-const speechDir = mkdtempSync(path.join(os.tmpdir(), "dialpal-shots-speech-"));
+const speechDir = mkdtempSync(path.join(os.tmpdir(), "callwright-shots-speech-"));
 writeFileSync(path.join(speechDir, "config.json"), JSON.stringify({ provider: "openai", openaiBaseUrl: `http://127.0.0.1:${server.address().port}/v1`, openaiModel: "gpt-4o", autoScreen: false, style: "sales", invisible: true, resume: RESUME, productBrief: JOB, profileName: "Sam Lee" }));
 // The encoder is the first and largest file: hold at about 40% of it.
 const holdAfter = Math.floor(MODEL.files[0].size * 0.4);
@@ -194,7 +194,7 @@ const modelServer = http.createServer((req, res) => {
 });
 await new Promise((r) => modelServer.listen(0, "127.0.0.1", r));
 const speechPort = 9900 + Math.floor(Math.random() * 90);
-const speechApp = spawn(electronPath, [root, `--remote-debugging-port=${speechPort}`, "--force-device-scale-factor=2"], { env: { ...process.env, DIALPAL_TEST_DIR: speechDir, DIALPAL_MODELS_URL: `http://127.0.0.1:${modelServer.address().port}`, ANTHROPIC_API_KEY: "sk-ant-placeholder-1234" }, stdio: "ignore" });
+const speechApp = spawn(electronPath, [root, `--remote-debugging-port=${speechPort}`, "--force-device-scale-factor=2"], { env: { ...process.env, CALLWRIGHT_TEST_DIR: speechDir, CALLWRIGHT_MODELS_URL: `http://127.0.0.1:${modelServer.address().port}`, ANTHROPIC_API_KEY: "sk-ant-placeholder-1234" }, stdio: "ignore" });
 
 let speechPage;
 for (let i = 0; i < 100 && !speechPage; i++) {

@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const g = window.dialpal;
+const g = window.callwright;
 // Wrapped so the UI tests can replace them without touching the bridge.
 let listModels = (params) => g.listModels(params);
 let testConnection = (params) => g.testConnection(params);
@@ -12,7 +12,7 @@ let view = "answers"; // "answers" | "transcript"
 // The one panel covering the answers, or null: "settings", "key" (changing the
 // provider; the key form also shows whenever there's no key), "instructions",
 // "doc" (resume or job description, see docKind), "profile", "shortcuts" or
-// "wipe" (delete all Dialpal data).
+// "wipe" (delete all Callwright data).
 // A panel opened from Settings (and the transcript) goes back there when
 // closed, to the same tab.
 let panel = null;
@@ -32,7 +32,7 @@ let pendingQuestion = null; // latest question someone else asked, until answere
 // Settings tab, remembered per viewer; settings work without it.
 let settingsTab = (() => {
   try {
-    return localStorage.getItem("dialpal.settingsTab")?.replace(/^interview$/, "calls") || "calls";
+    return localStorage.getItem("callwright.settingsTab")?.replace(/^interview$/, "calls") || "calls";
   } catch {
     return "calls";
   }
@@ -46,7 +46,7 @@ const STYLE_HINTS = {
 function meetingStyle() {
   if (state.style === "natural" || state.style === "brief") return state.style;
   try {
-    const saved = localStorage.getItem("dialpal.styleBeforeSales");
+    const saved = localStorage.getItem("callwright.styleBeforeSales");
     return saved === "natural" ? "natural" : "brief";
   } catch {
     return "brief";
@@ -63,7 +63,7 @@ const SHORTCUT_LABELS = {
   snap: "Screenshot and answer",
   ask: "Reply to what they just said, or to what you've typed",
   listen: "Start or stop listening",
-  toggleWindow: "Show or hide Dialpal",
+  toggleWindow: "Show or hide Callwright",
   addShot: "Add a screenshot without asking",
   invisible: "Hide from screen sharing",
 };
@@ -157,7 +157,7 @@ let settingsCombo = null;
 function renderSettingsModel() {
   const current = (state.provider === "openai" ? state.openaiModel : state.model) || "";
   // Anthropic before its list has loaded (no key yet, offline): the models
-  // Dialpal knows, so there's still a choice.
+  // Callwright knows, so there's still a choice.
   const fetched = state.modelOptions || [];
   const models = fetched.length || state.provider === "openai" ? fetched : (state.models || []).map((m) => ({ id: m.id, name: `Claude ${m.name}` }));
   settingsModels = models.filter((m) => m?.id);
@@ -169,7 +169,7 @@ function renderSettingsModel() {
   $("modelHint").classList.toggle("caution", hint.endsWith("Choose a model."));
 }
 
-// What the Model row says under its name: the price for models Dialpal knows,
+// What the Model row says under its name: the price for models Callwright knows,
 // otherwise where the list comes from and that only tokens are counted.
 function modelHint(id) {
   const openai = state.provider === "openai";
@@ -216,9 +216,9 @@ function renderMenu() {
       ? `${sp.input.toLocaleString()} tokens in, ${sp.output.toLocaleString()} out (this provider's prices aren't known)`
       : "Nothing spent yet";
   $("saveNotesBtn").disabled = !!state.savingNotes;
-  $("saveNotesMeta").textContent = state.savingNotes ? "Writing your notes…" : "Summary, decisions, action items and full transcript, to Documents/Dialpal";
+  $("saveNotesMeta").textContent = state.savingNotes ? "Writing your notes…" : "Summary, decisions, action items and full transcript, to Documents/Callwright";
   const n = state.transcriptCount || 0;
-  $("transcriptMeta").textContent = n ? `${n.toLocaleString()} line${n === 1 ? "" : "s"} so far` : "What Dialpal has heard so far";
+  $("transcriptMeta").textContent = n ? `${n.toLocaleString()} line${n === 1 ? "" : "s"} so far` : "What Callwright has heard so far";
   $("instructionsMeta").textContent = state.customInstructions?.trim() ? "on" : "none";
   $("instructionsResumeWarn").hidden = !looksLikeResume(state.customInstructions);
   $("resumeMeta").textContent = docMeta(state.resume);
@@ -239,7 +239,7 @@ function renderMenu() {
     : speech.status === "downloading" ? `Downloading the speech model: ${pct}%`
     : speech.status === "checking" ? "Checking the speech model…"
     : speech.engine === "loading" ? "Loading the speech model…"
-    : speech.engine === "failed" ? "The speech engine stopped. Quit and reopen Dialpal."
+    : speech.engine === "failed" ? "The speech engine stopped. Quit and reopen Callwright."
     : "";
   $("speechStatus").hidden = !speechText;
   $("speechStatus").classList.toggle("caution", speech.status === "error" || speech.engine === "failed");
@@ -257,7 +257,7 @@ function renderShortcutHints() {
     ["listen", "Start or end a call"],
     ["ask", "Reply to what they just said, or to what you've typed"],
     ["snap", "Screenshot your screen and get an answer"],
-    ["toggleWindow", "Show or hide Dialpal"],
+    ["toggleWindow", "Show or hide Callwright"],
   ]
     .map(([a, label]) => `<li><span class="keys">${keycaps(k[a])}</span><span>${label}</span></li>`)
     .join("");
@@ -266,7 +266,7 @@ function renderShortcutHints() {
     .join("");
   $("listenBtn").title = `Listen to your call so answers can use what's said (${plainKeys(k.listen)})`;
   $("shotBtn").title = `Screenshot your screen and answer it (${plainKeys(k.snap)}). Shift-click or ${plainKeys(k.addShot)} to collect several first.`;
-  $("hideTopBtn").title = `Hide Dialpal (${plainKeys(k.toggleWindow)}). Bring it back from the menu bar icon.`;
+  $("hideTopBtn").title = `Hide Callwright (${plainKeys(k.toggleWindow)}). Bring it back from the menu bar icon.`;
 }
 
 function renderShortcutList() {
@@ -387,7 +387,7 @@ function renderStage() {
     const { text: body, keys } = splitKeys(a.text, { streaming: a.status === "streaming" });
     const compact = keys.length > 0 && answerView === "compact";
     const first = body.split("\n").find((l) => l.trim()) || "";
-    // The note (details Dialpal added, to check) shows in both views.
+    // The note (details Callwright added, to check) shows in both views.
     const note = body.trim().split("\n").at(-1);
     const noteMd = /^\*[^*].*\*$/.test(note?.trim() || "") && note !== first ? renderMarkdown(note) : "";
     $("answerBody").innerHTML =
@@ -508,16 +508,16 @@ function renderTranscriptLine(l) {
   if (view === "transcript") $("stage").scrollTop = $("stage").scrollHeight;
 }
 
-// The update bar. Later hides it for that version until Dialpal reopens; it
+// The update bar. Later hides it for that version until Callwright reopens; it
 // also stays out of the way during a call and during setup.
 let updateDismissed = null;
-// Updating restarts Dialpal, which clears the transcript and answers.
-const updateSessionNote = () => ((state.transcriptCount || 0) > 0 || answers.length > 0 ? " Save notes first: updating restarts Dialpal and clears this session." : "");
+// Updating restarts Callwright, which clears the transcript and answers.
+const updateSessionNote = () => ((state.transcriptCount || 0) > 0 || answers.length > 0 ? " Save notes first: updating restarts Callwright and clears this session." : "");
 const updateStatusText = (u) =>
-  u.status === "downloading" ? `Downloading Dialpal ${u.version}: ${Math.floor(((u.received || 0) / (u.total || 1)) * 100)}%`
-  : u.status === "installing" ? `Installing Dialpal ${u.version}. Dialpal will reopen in a moment.`
+  u.status === "downloading" ? `Downloading Callwright ${u.version}: ${Math.floor(((u.received || 0) / (u.total || 1)) * 100)}%`
+  : u.status === "installing" ? `Installing Callwright ${u.version}. Callwright will reopen in a moment.`
   : u.status === "error" ? u.error
-  : `Dialpal ${u.version} is available.${updateSessionNote()}`;
+  : `Callwright ${u.version} is available.${updateSessionNote()}`;
 function renderUpdate() {
   const u = state.update || { status: "none" };
   const active = u.status === "downloading" || u.status === "installing";
@@ -546,12 +546,12 @@ function renderAboutUpdate() {
   const ready = u.status === "available" || u.status === "error";
   const active = u.status === "downloading" || u.status === "installing";
   $("updateCheckBtn").disabled = active;
-  $("updateCheckTitle").textContent = ready ? `Update to Dialpal ${u.version}` : active ? `Updating to Dialpal ${u.version}` : "Check for updates";
+  $("updateCheckTitle").textContent = ready ? `Update to Callwright ${u.version}` : active ? `Updating to Callwright ${u.version}` : "Check for updates";
   $("updateCheckMeta").textContent =
     u.status === "error" ? `${u.error} Click to try again.`
-    : ready ? `Downloads it, installs it and reopens Dialpal.${updateSessionNote()}`
+    : ready ? `Downloads it, installs it and reopens Callwright.${updateSessionNote()}`
     : active ? updateStatusText(u)
-    : UPDATE_CHECK_TEXT[updateCheckResult] || "Dialpal also checks by itself when it opens and every hour.";
+    : UPDATE_CHECK_TEXT[updateCheckResult] || "Callwright also checks by itself when it opens and every hour.";
 }
 $("updateBtn").addEventListener("click", () => g.installUpdate());
 $("updatePage").addEventListener("click", () => g.openUpdatePage());
@@ -573,12 +573,12 @@ function showNotice({ level, text, action }) {
     n.append(" ", b);
   }
   // "audio-access": no sound since Listen; settings, then a reopen.
-  const buttons = { "screen-settings": ["Open Screen Recording settings"], "audio-access": ["Open settings", "Reopen Dialpal"] }[action] || [];
+  const buttons = { "screen-settings": ["Open Screen Recording settings"], "audio-access": ["Open settings", "Reopen Callwright"] }[action] || [];
   for (const label of buttons) {
     const b = document.createElement("button");
     b.className = "notice-action";
     b.textContent = label;
-    b.addEventListener("click", () => (label === "Reopen Dialpal" ? g.relaunch() : g.openScreenSettings()));
+    b.addEventListener("click", () => (label === "Reopen Callwright" ? g.relaunch() : g.openScreenSettings()));
     n.append(" ", b);
   }
   clearTimeout(showNotice.t);
@@ -604,7 +604,7 @@ function setMenu(open) {
 
 function hasSeenAnswer() {
   try {
-    return localStorage.getItem("dialpal.seenAnswer") === "1";
+    return localStorage.getItem("callwright.seenAnswer") === "1";
   } catch {
     return answers.length > 0;
   }
@@ -922,7 +922,7 @@ g.on("answer-start", ({ id, question, gated }) => {
   setCollapsed(false);
   renderStrip();
   try {
-    localStorage.setItem("dialpal.seenAnswer", "1");
+    localStorage.setItem("callwright.seenAnswer", "1");
   } catch {}
   renderStage();
   $("stage").scrollTop = 0;
@@ -1383,19 +1383,19 @@ $("collapseBtn").addEventListener("click", () => setCollapsed(!collapsed));
 $("hideTopBtn").addEventListener("click", () => g.hide());
 // Quit from the top bar. During a call it takes a second click, so a slip
 // doesn't end the transcript.
-// The X stays red while it waits: the notice is hidden when Dialpal is collapsed.
+// The X stays red while it waits: the notice is hidden when Callwright is collapsed.
 let quitArmed = null;
 $("quitTopBtn").addEventListener("click", () => {
   const b = $("quitTopBtn");
   if (state.listening && !quitArmed) {
     b.classList.add("armed");
-    b.title = "Click again to quit Dialpal";
+    b.title = "Click again to quit Callwright";
     quitArmed = setTimeout(() => {
       quitArmed = null;
       b.classList.remove("armed");
-      b.title = "Quit Dialpal";
+      b.title = "Quit Callwright";
     }, 5000);
-    return showNotice({ level: "warn", text: "Dialpal is listening to your call. Click the X again to quit." });
+    return showNotice({ level: "warn", text: "Callwright is listening to your call. Click the X again to quit." });
   }
   g.quit();
 });
@@ -1484,7 +1484,7 @@ $("style").addEventListener("click", (e) => {
   if (!v) return;
   if (state.style !== "sales") return g.setSetting("style", v);
   try {
-    localStorage.setItem("dialpal.styleBeforeSales", v);
+    localStorage.setItem("callwright.styleBeforeSales", v);
   } catch {}
   render();
 });
@@ -1533,7 +1533,7 @@ function updateInstructionsCount() {
   const unchanged = text === state.customInstructions;
   $("sentBox").hidden = !(sent && unchanged);
   if (sent && unchanged) {
-    $("sentSummary").textContent = `What Dialpal sends with each question: about ${approxTokens(sent)} tokens`;
+    $("sentSummary").textContent = `What Callwright sends with each question: about ${approxTokens(sent)} tokens`;
     $("sentText").textContent = sent;
   }
   const max = state.maxInstructions || 12000;
@@ -1682,7 +1682,7 @@ $("settingsTabs").addEventListener("click", (e) => {
   settingsTab = tab;
   updateCheckResult = null;
   try {
-    localStorage.setItem("dialpal.settingsTab", tab);
+    localStorage.setItem("callwright.settingsTab", tab);
   } catch {}
   render();
   $("stage").scrollTop = 0;
@@ -1694,7 +1694,7 @@ function toggleSales() {
     g.setSetting("style", meetingStyle());
   } else {
     try {
-      localStorage.setItem("dialpal.styleBeforeSales", state.style);
+      localStorage.setItem("callwright.styleBeforeSales", state.style);
     } catch {}
     g.setSetting("style", "sales");
   }
@@ -1735,7 +1735,7 @@ $("nextBtn").addEventListener("click", () => {
   page = Math.min(answers.length - 1, page + 1);
   renderStage();
 });
-// Dialpal is a non-activating panel, so macOS sends ⌘C/⌘V/⌘X/⌘A/⌘Z to the
+// Callwright is a non-activating panel, so macOS sends ⌘C/⌘V/⌘X/⌘A/⌘Z to the
 // frontmost app's menu instead of ours. Handle them here.
 async function pasteInto(input) {
   const raw = await g.readClipboard();
@@ -1864,7 +1864,7 @@ function renderOnboarding() {
   $("onboardHead").hidden = step === "welcome";
   $("onboardSkip").hidden = step === "ready" || !canSkipSetup();
   $("obBack").hidden = step === "welcome";
-  $("obNext").textContent = step === "welcome" ? "Get started" : step === "speech" ? "Continue" : step === "ready" ? "Start using Dialpal" : "Next";
+  $("obNext").textContent = step === "welcome" ? "Get started" : step === "speech" ? "Continue" : step === "ready" ? "Start using Callwright" : "Next";
   const speechPending = step === "speech" && state.speech?.status !== "ready";
   if (step === "speech") {
     const speech = state.speech || {};
@@ -1873,7 +1873,7 @@ function renderOnboarding() {
     const received = Math.min(speech.received || 0, total);
     const mb = (n) => Math.round(n / 1_000_000).toLocaleString();
     // Rounded to tens: "about 660 MB" for Parakeet.
-    $("obSpeechLead").textContent = `Dialpal needs this to transcribe calls. This one-time download is about ${Math.round(total / 10_000_000) * 10} MB.`;
+    $("obSpeechLead").textContent = `Callwright needs this to transcribe calls. This one-time download is about ${Math.round(total / 10_000_000) * 10} MB.`;
     $("obSpeechFill").style.width = `${total ? (100 * received) / total : 0}%`;
     $("obSpeechMeta").textContent = `${mb(received)} of ${mb(total)} MB`;
     $("obSpeechProgress").hidden = speech.status === "error";
@@ -1897,7 +1897,7 @@ function renderOnboarding() {
   $("obListenKey").textContent = plainKeys(state.shortcuts?.listen || "");
   $("obAskKey").textContent = plainKeys(state.shortcuts?.ask || "");
 }
-const resumeRequired = () => false; // About you is optional in Dialpal
+const resumeRequired = () => false; // About you is optional in Callwright
 const resumeMissing = () => false;
 // Skip setup leaves only once the speech model is ready and a resume is saved, or for meetings.
 const canSkipSetup = () => state.speech?.status === "ready" && (!resumeRequired() || !!state.resume?.trim());
@@ -2030,7 +2030,7 @@ $("profileForm").addEventListener("submit", (e) => {
 });
 $("profileCancel").addEventListener("click", closePanel);
 
-// Settings › General › Delete all Dialpal data (before uninstalling).
+// Settings › General › Delete all Callwright data (before uninstalling).
 $("wipeBtn").addEventListener("click", () => {
   $("wipeNotes").checked = false;
   openPanel("wipe");
@@ -2051,7 +2051,7 @@ g.getState().then((s) => {
   heard.forEach(renderTranscriptLine);
   // Setup until done; and again while Sales mode has no resume, since
   // interview answers are built from it (Skip setup can't leave without one).
-  // A missing speech model brings back just that step. While Dialpal is
+  // A missing speech model brings back just that step. While Callwright is
   // still checking the files on disk, wait for the answer (see render).
   if (!state.onboarded) startOnboarding();
   else if (state.speech?.status === "checking") {
@@ -2144,7 +2144,7 @@ function renderScorecard(card) {
   const p = state.practice || {};
   $("scScore").textContent = card.score;
   $("scTitle").textContent = `Practice with ${p.name || "the prospect"}${card.booked ? ": meeting booked" : ""}`;
-  $("scMeta").textContent = card.talkRatio != null ? `You spoke about ${card.talkRatio}% of the words. Saved to Documents/Dialpal.` : "Saved to Documents/Dialpal.";
+  $("scMeta").textContent = card.talkRatio != null ? `You spoke about ${card.talkRatio}% of the words. Saved to Documents/Callwright.` : "Saved to Documents/Callwright.";
   const parts = [["Opener", card.opener], ["Discovery", card.discovery], ["Objections", card.objections], ["Close", card.close]];
   $("scParts").innerHTML = parts
     .map(([label, part]) => `<li><span class="sc-label">${label}</span><span class="sc-dots" aria-label="${part.score ?? 0} of 5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= (part.score || 0) ? "on" : ""}"></i>`).join("")}</span><span class="sc-note">${escapeHtml(part.note || "")}</span></li>`)
@@ -2247,7 +2247,7 @@ $("hubspotTest").addEventListener("click", async () => {
   $("hubspotStatus").textContent = "Checking…";
   const r = await g.testHubSpot($("hubspotToken").value.trim());
   $("hubspotStatus").className = `model-status${r.error ? " error" : ""}`;
-  $("hubspotStatus").textContent = r.error ? r.error : "Connected. Dialpal can log calls.";
+  $("hubspotStatus").textContent = r.error ? r.error : "Connected. Callwright can log calls.";
 });
 $("hubspotForm").addEventListener("submit", async (e) => {
   e.preventDefault();

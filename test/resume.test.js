@@ -13,7 +13,7 @@ test("tidy keeps every word, drops page breaks and extra blank lines", () => {
 });
 
 test("reads text, Word and RTF files word for word", async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-resume-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-resume-"));
   const txt = path.join(dir, "cv.txt");
   writeFileSync(txt, RESUME);
   execFileSync("/usr/bin/textutil", ["-convert", "docx", txt, "-output", path.join(dir, "cv.docx")]);

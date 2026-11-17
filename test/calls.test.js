@@ -56,7 +56,7 @@ test("CSV rows quote commas and quotes, and never start a cell with a formula", 
 });
 
 test("appendRecord writes JSONL and CSV; readRecords skips a torn line", async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-calls-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-calls-"));
   try {
     await appendRecord(dir, record({ outcome: "booked" }));
     await appendRecord(dir, record({ practice: true, score: 7 }));

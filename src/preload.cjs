@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const channels = ["state", "transcript", "answer-start", "answer-delta", "answer-end", "answer-skipped", "notice", "focus-input", "submit", "snap-submit", "mic-start", "mic-stop"];
 
-contextBridge.exposeInMainWorld("dialpal", {
+contextBridge.exposeInMainWorld("callwright", {
   on(channel, fn) {
     if (!channels.includes(channel)) throw new Error(`Unknown channel ${channel}`);
     const listener = (_e, payload) => fn(payload);

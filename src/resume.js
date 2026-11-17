@@ -34,7 +34,7 @@ export function tidy(text) {
 
 export async function extractResume(file) {
   const ext = path.extname(file).slice(1).toLowerCase();
-  if (!RESUME_EXTENSIONS.includes(ext)) throw new Error(`Dialpal can't read .${ext} files. Use PDF, Word, RTF, text or Markdown.`);
+  if (!RESUME_EXTENSIONS.includes(ext)) throw new Error(`Callwright can't read .${ext} files. Use PDF, Word, RTF, text or Markdown.`);
   let text;
   if (ext === "txt" || ext === "md") text = await readFile(file, "utf8");
   else if (ext === "pdf") text = await run("/usr/bin/osascript", ["-l", "JavaScript", "-e", PDF_SCRIPT, file]);

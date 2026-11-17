@@ -9,9 +9,9 @@ import { promisify } from "node:util";
 // Where releases live. They must be public: the check and the download are
 // anonymous. If the source moves to a private repo, point this at a public
 // repo that holds only the releases.
-export const RELEASES_REPO = "Jchinonso/dialpal";
+export const RELEASES_REPO = "Jchinonso/callwright";
 export const RELEASES_URL = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
-export const BUNDLE_ID = "com.dialpal.overlay";
+export const BUNDLE_ID = "com.callwright.overlay";
 
 // An error whose message is written for the user.
 export class UpdateError extends Error {}
@@ -34,7 +34,7 @@ export function isNewer(latest, current) {
 export function pickUpdate(release, { current, arch, trusted = fromReleases }) {
   const version = String(release?.tag_name || "").replace(/^v/, "");
   if (!/^\d+\.\d+\.\d+$/.test(version) || release.draft || release.prerelease || !isNewer(version, current)) return null;
-  const asset = release.assets?.find((a) => a.name === `Dialpal-${version}-${arch}.dmg`);
+  const asset = release.assets?.find((a) => a.name === `Callwright-${version}-${arch}.dmg`);
   const sha256 = /^sha256:([0-9a-f]{64})$/.exec(asset?.digest || "")?.[1];
   if (!asset || !sha256 || !(asset.size > 0) || !trusted(asset.browser_download_url)) return null;
   return { version, url: asset.browser_download_url, size: asset.size, sha256, page: `https://github.com/${RELEASES_REPO}/releases/tag/v${version}` };
@@ -92,13 +92,13 @@ export async function downloadUpdate(update, { file, onProgress, idleMs = 30000,
   return file;
 }
 
-// The Dialpal.app this process runs from, or null (npm run dev, for example).
+// The Callwright.app this process runs from, or null (npm run dev, for example).
 export function appBundle(execPath) {
   const bundle = path.resolve(execPath, "..", "..", "..");
-  return path.basename(bundle) === "Dialpal.app" ? bundle : null;
+  return path.basename(bundle) === "Callwright.app" ? bundle : null;
 }
 
-// Whether Dialpal can swap its own bundle: not from the mounted DMG, and not
+// Whether Callwright can swap its own bundle: not from the mounted DMG, and not
 // from the read-only copy macOS runs a never-moved download from.
 export function canReplace(bundle) {
   if (bundle.includes("/AppTranslocation/")) return false;
@@ -112,12 +112,12 @@ export function canReplace(bundle) {
 }
 
 // What an interrupted update (or install.sh) can leave behind: the staged
-// copy or the old app beside Dialpal.app, and the DMG in the temp folder.
+// copy or the old app beside Callwright.app, and the DMG in the temp folder.
 // Only these names.
 export function removeUpdateLeftovers({ bundle, temp }) {
   const places = [
-    [path.dirname(bundle), /^(\.Dialpal-(\d+\.\d+\.\d+|install|old)\.app|Dialpal\.app\.old)$/],
-    [temp, /^Dialpal-\d+\.\d+\.\d+-(arm64|x64)\.dmg$/],
+    [path.dirname(bundle), /^(\.Callwright-(\d+\.\d+\.\d+|install|old)\.app|Callwright\.app\.old)$/],
+    [temp, /^Callwright-\d+\.\d+\.\d+-(arm64|x64)\.dmg$/],
   ];
   const removed = [];
   for (const [dir, pattern] of places) {
@@ -133,15 +133,15 @@ export function removeUpdateLeftovers({ bundle, temp }) {
 const exec = promisify(execFile);
 const plist = async (app, key) => (await exec("/usr/bin/plutil", ["-extract", key, "raw", path.join(app, "Contents", "Info.plist")])).stdout.trim();
 
-// Copies Dialpal.app out of the DMG to a hidden folder beside the installed
+// Copies Callwright.app out of the DMG to a hidden folder beside the installed
 // app (same disk, so the swap is a rename). Refuses anything that isn't
-// Dialpal at the expected version. Returns the copy's path.
+// Callwright at the expected version. Returns the copy's path.
 export async function stageUpdate({ dmg, bundle, version }) {
-  const mount = mkdtempSync(path.join(os.tmpdir(), "dialpal-update-"));
-  const staged = path.join(path.dirname(bundle), `.Dialpal-${version}.app`);
+  const mount = mkdtempSync(path.join(os.tmpdir(), "callwright-update-"));
+  const staged = path.join(path.dirname(bundle), `.Callwright-${version}.app`);
   try {
     await exec("/usr/bin/hdiutil", ["attach", dmg, "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount]);
-    const source = path.join(mount, "Dialpal.app");
+    const source = path.join(mount, "Callwright.app");
     if ((await plist(source, "CFBundleIdentifier")) !== BUNDLE_ID || (await plist(source, "CFBundleShortVersionString")) !== version) {
       throw new UpdateError("The update isn't the version it claims to be, so it wasn't installed.");
     }
@@ -159,9 +159,9 @@ export async function stageUpdate({ dmg, bundle, version }) {
   }
 }
 
-// Run detached with (pid, installed app, staged app): waits for Dialpal to
+// Run detached with (pid, installed app, staged app): waits for Callwright to
 // quit, swaps the bundles, and reopens. If the swap fails the old app is put
-// back, and either way Dialpal opens again.
+// back, and either way Callwright opens again.
 export const SWAP_SCRIPT = `
 pid=$1; app=$2; new=$3; old="$app.old"
 i=0

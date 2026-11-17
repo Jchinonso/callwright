@@ -242,7 +242,7 @@ export async function pushToHubSpot(record, token, { fetchFn = fetch, baseUrl = 
     `Outcome: ${OUTCOMES[record.outcome] || record.outcome}${record.meeting ? ` (${record.meeting})` : ""}`,
     record.objections.length ? `Objections: ${record.objections.map((o) => `${OBJECTIONS[o.type] || o.type}${o.handled ? " (handled)" : ""}`).join("; ")}` : null,
     record.nextStep ? `Next step: ${record.nextStep}` : null,
-    "Logged by Dialpal.",
+    "Logged by Callwright.",
   ].filter(Boolean).join("\n");
   const created = await call("POST", "/crm/v3/objects/calls", {
     properties: {

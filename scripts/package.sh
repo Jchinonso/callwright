@@ -1,5 +1,5 @@
 #!/bin/sh
-# Packages and signs dist/Dialpal-darwin-<arch>/Dialpal.app.
+# Packages and signs dist/Callwright-darwin-<arch>/Callwright.app.
 # arch: arm64 (the default, Apple Silicon) or x64 (Intel).
 set -e
 cd "$(dirname "$0")/.."
@@ -10,8 +10,8 @@ case "$arch" in
   *) echo "arch must be arm64 or x64" >&2; exit 1 ;;
 esac
 
-app_name="Dialpal"
-bundle_id="com.dialpal.overlay"
+app_name="Callwright"
+bundle_id="com.callwright.overlay"
 
 # The speech engine is prebuilt per chip. npm installs only this Mac's, so
 # fetch the other one when building for it (same version, not saved).

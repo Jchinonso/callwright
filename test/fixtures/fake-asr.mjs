@@ -1,4 +1,4 @@
-// A stand-in for sherpa-onnx (DIALPAL_TEST_ASR), so tests never load the real
+// A stand-in for sherpa-onnx (CALLWRIGHT_TEST_ASR), so tests never load the real
 // model. It "hears" a fixed text, or reports what it was given.
 // FAKE_ASR_TEXT: the text to return ("" for silence); default describes the
 // audio and the hotwords. FAKE_ASR_FAIL_LOAD=1: the model fails to load.

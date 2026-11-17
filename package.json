@@ -1,11 +1,11 @@
 {
-  "name": "dialpal",
-  "version": "0.1.0",
+  "name": "callwright",
+  "version": "0.2.0",
   "description": "macOS overlay for sales calls: hears the prospect and shows your next line, built from your product brief, with Claude or any OpenAI-compatible model",
   "main": "src/main.js",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "start": "open dist/Dialpal-darwin-arm64/Dialpal.app",
+    "start": "open dist/Callwright-darwin-arm64/Callwright.app",
     "package": "sh scripts/package.sh arm64",
     "package:x64": "sh scripts/package.sh x64",
     "dev": "electron .",
@@ -23,6 +23,6 @@
     "@electron/packager": "^20.3.0",
     "electron": "^45.1.0"
   },
-  "productName": "Dialpal",
+  "productName": "Callwright",
   "private": true
 }

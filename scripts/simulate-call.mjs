@@ -1,10 +1,10 @@
-// Simulates a whole cold call through Dialpal's real pipeline, with no
+// Simulates a whole cold call through Callwright's real pipeline, with no
 // microphone and no phone:
 //   prospect (the practice role-play model) -> spoken by a macOS voice ->
 //   transcribed by the real Parakeet model -> question/objection detection ->
 //   the Sales reply the rep would read -> ... -> call record and scorecard.
 // The rep "says" each bold line exactly as shown. Needs the speech model
-// (open Dialpal once) and an Anthropic key:
+// (open Callwright once) and an Anthropic key:
 //   ANTHROPIC_API_KEY=… node scripts/simulate-call.mjs [persona] [turns]
 // persona: busy | skeptical | curious | gatekeeper (default skeptical).
 import { execFileSync } from "node:child_process";
@@ -27,10 +27,10 @@ if (!process.env.ANTHROPIC_API_KEY) {
   console.error("Set ANTHROPIC_API_KEY.");
   process.exit(1);
 }
-const modelDir = path.join(os.homedir(), "Library", "Application Support", "Dialpal", "models", MODEL.dir);
+const modelDir = path.join(os.homedir(), "Library", "Application Support", "Callwright", "models", MODEL.dir);
 const model = DEFAULT_ANTHROPIC_MODEL;
 const llm = createProvider({ provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY });
-const tmp = mkdtempSync(path.join(os.tmpdir(), "dialpal-call-"));
+const tmp = mkdtempSync(path.join(os.tmpdir(), "callwright-call-"));
 
 // The detector the window uses (a browser script), run here as-is.
 const ctx = vm.createContext({});
@@ -63,7 +63,7 @@ function speakToPcm(text, voice) {
   return buf.subarray(at);
 }
 
-// The call audio as Dialpal hears it: cut into phrases by the same
+// The call audio as Callwright hears it: cut into phrases by the same
 // segmenter, then transcribed by Parakeet.
 async function hear(pcm, asr) {
   const seg = new Segmenter();
@@ -113,7 +113,7 @@ const loadStart = Date.now();
 await asr.load({ hotwords: HOTWORDS });
 console.log(`\nSpeech model loaded in ${Date.now() - loadStart} ms. Persona: ${p.label} (${p.name}, voice ${p.voice}). Calling ${TARGET.name}, ${TARGET.role} at ${TARGET.company}.\n`);
 
-const transcript = []; // what Dialpal has: the prospect as heard, the rep as said
+const transcript = []; // what Callwright has: the prospect as heard, the rep as said
 const previous = []; // the rep's lines, as the app keeps them
 const wers = [];
 let hungUp = false;

@@ -3,7 +3,7 @@
 // sherpa-onnx boosts a phrase only when it is given as the model's own tokens
 // (tokens.txt: BPE pieces, "▁" starting a word, case-sensitive), and only when
 // those are exactly the pieces the model emits for it. Its hotword parser
-// can't take word-initial pieces ("▁P") directly, so Dialpal gives it plain
+// can't take word-initial pieces ("▁P") directly, so Callwright gives it plain
 // words plus a small vocabulary file made of just the pieces those words
 // need; sherpa's encoder then picks the highest-scoring split from that file.
 // A wrong split makes things worse ("Postgres" heard as "Postgroups"), and one

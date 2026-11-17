@@ -5,7 +5,7 @@
 }
 
 :root {
-  /* Dialpal: a call console. Deep switchboard green, an amber call lamp for
+  /* Callwright: a call console. Deep switchboard green, an amber call lamp for
      anything live or primary, signal red only for objections and danger. */
   --glass: rgba(14, 33, 27, 0.9);
   --edge: rgba(200, 230, 212, 0.13);
@@ -68,7 +68,7 @@ kbd { font: 500 11px var(--ui); color: var(--dim); }
 /* No flex-grow on the stage: the window height follows the content, so the
    stage must report its natural height for fit() to shrink the window. */
 
-/* The rim is quiet at rest and lights up only while Dialpal is listening or answering. */
+/* The rim is quiet at rest and lights up only while Callwright is listening or answering. */
 .rim {
   position: absolute;
   inset: 0;
@@ -186,7 +186,7 @@ body.collapsed .stage,
 body.collapsed .notice,
 body.collapsed .dock { display: none !important; }
 
-/* A newer Dialpal is out: one click downloads, installs and reopens it. */
+/* A newer Callwright is out: one click downloads, installs and reopens it. */
 .updatebar { padding: 0 12px 8px; }
 .updatebar-box {
   display: flex;
@@ -849,14 +849,14 @@ body.needs-key #listenBtn, body.needs-key #shotBtn { display: none; }
 .said-form { display: flex; gap: 6px; }
 .said-form input { flex: 1; }
 
-/* The closing note (details Dialpal added, a tip): for the user's eyes, so it
+/* The closing note (details Callwright added, a tip): for the user's eyes, so it
    reads as an aside, not part of what to say. */
 .body > p:last-child > em:only-child { display: block; font: 400 12.5px/1.45 var(--ui); font-style: normal; color: var(--dim); }
 
 /* An answer cut short (Stop, a new question, or a typed one). */
 .body .stopped { margin-top: 6px; font: 600 12px var(--ui); color: var(--caution); }
 
-/* Delete all Dialpal data */
+/* Delete all Callwright data */
 .primary.alarm { background: var(--alert); color: #fff; }
 label.check { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: var(--text); font-size: 13px; }
 label.check input { width: 15px; height: 15px; accent-color: var(--alert); }
@@ -891,7 +891,7 @@ label.check input { width: 15px; height: 15px; accent-color: var(--alert); }
 
 
 /* ---------------------------------------------------------------------------
-   Dialpal identity. Overrides kept together so the console look is easy to
+   Callwright identity. Overrides kept together so the console look is easy to
    find: wordmark with a call lamp, a steady amber rim while live, the reply
    as a cue card in condensed type, and a red tag for objections.
    ------------------------------------------------------------------------- */

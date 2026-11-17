@@ -1,18 +1,18 @@
 #!/bin/sh
-# Installs or updates Dialpal: downloads the latest release for this Mac's
-# chip, checks it against the release's sha256, and copies Dialpal.app into
-# /Applications (or $DIALPAL_INSTALL_DIR).
-#   curl -fsSL https://raw.githubusercontent.com/Jchinonso/dialpal/main/install.sh | sh
+# Installs or updates Callwright: downloads the latest release for this Mac's
+# chip, checks it against the release's sha256, and copies Callwright.app into
+# /Applications (or $CALLWRIGHT_INSTALL_DIR).
+#   curl -fsSL https://raw.githubusercontent.com/Jchinonso/callwright/main/install.sh | sh
 set -eu
 
 # Everything runs inside main, called on the last line, so a download cut
 # short runs nothing and no command can read the rest of the script as input.
 main() {
-  repo="Jchinonso/dialpal"
-  dest="${DIALPAL_INSTALL_DIR:-/Applications}"
-  fail() { echo "Dialpal install: $1" >&2; exit 1; }
+  repo="Jchinonso/callwright"
+  dest="${CALLWRIGHT_INSTALL_DIR:-/Applications}"
+  fail() { echo "Callwright install: $1" >&2; exit 1; }
 
-  [ "$(uname -s)" = "Darwin" ] || fail "Dialpal runs on macOS only."
+  [ "$(uname -s)" = "Darwin" ] || fail "Callwright runs on macOS only."
   case "$(uname -m)" in
     arm64) arch=arm64 ;;
     x86_64) arch=x64 ;;
@@ -27,10 +27,10 @@ main() {
   minor=${rest%%.*}
   [ "$minor" = "$os" ] && minor=0
   if [ "$major" -lt 14 ] || { [ "$major" -eq 14 ] && [ "$minor" -lt 2 ]; }; then
-    fail "Dialpal needs macOS 14.2 or later. This Mac has $os."
+    fail "Callwright needs macOS 14.2 or later. This Mac has $os."
   fi
   [ -d "$dest" ] || fail "$dest doesn't exist."
-  [ -w "$dest" ] || fail "this account can't write to $dest. Run it from an administrator account, or pick a folder you own: mkdir -p ~/Applications, then add DIALPAL_INSTALL_DIR=~/Applications before sh."
+  [ -w "$dest" ] || fail "this account can't write to $dest. Run it from an administrator account, or pick a folder you own: mkdir -p ~/Applications, then add CALLWRIGHT_INSTALL_DIR=~/Applications before sh."
 
   work=$(mktemp -d)
   mount="$work/mount"
@@ -40,7 +40,7 @@ main() {
   }
   trap cleanup EXIT
 
-  echo "Finding the latest Dialpal…"
+  echo "Finding the latest Callwright…"
   code=$(curl -sSL -o "$work/release.json" -w '%{http_code}' -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$repo/releases/latest") || fail "couldn't reach GitHub. Check your connection."
   # GitHub allows 60 anonymous requests an hour from one network address.
   case "$code" in
@@ -56,7 +56,7 @@ main() {
   case "$version" in
     "" | *[!0-9.]*) fail "couldn't read the latest version." ;;
   esac
-  name="Dialpal-$version-$arch.dmg"
+  name="Callwright-$version-$arch.dmg"
   # The sha256 GitHub lists for that DMG.
   sum=""
   i=0
@@ -70,38 +70,38 @@ main() {
   done
   [ ${#sum} -eq 64 ] || fail "release $version has no $arch download yet."
 
-  echo "Downloading Dialpal $version ($arch)…"
+  echo "Downloading Callwright $version ($arch)…"
   curl -fL --progress-bar -o "$work/$name" "https://github.com/$repo/releases/download/v$version/$name" || fail "the download failed."
   [ "$(shasum -a 256 "$work/$name" | cut -d' ' -f1)" = "$sum" ] || fail "the download was corrupted. Run this again."
 
   echo "Installing to ${dest}…"
   mkdir "$mount"
   hdiutil attach "$work/$name" -nobrowse -readonly -noautoopen -mountpoint "$mount" >/dev/null
-  [ -d "$mount/Dialpal.app" ] || fail "the download didn't contain Dialpal."
-  osascript -e 'quit app id "com.dialpal.overlay"' >/dev/null 2>&1 || true
-  # Give a running Dialpal a few seconds to finish quitting before replacing it.
+  [ -d "$mount/Callwright.app" ] || fail "the download didn't contain Callwright."
+  osascript -e 'quit app id "com.callwright.overlay"' >/dev/null 2>&1 || true
+  # Give a running Callwright a few seconds to finish quitting before replacing it.
   i=0
-  while pgrep -x Dialpal >/dev/null 2>&1 && [ "$i" -lt 25 ]; do
+  while pgrep -x Callwright >/dev/null 2>&1 && [ "$i" -lt 25 ]; do
     sleep 0.2
     i=$((i + 1))
   done
   # Copy the new app in beside the old one, then swap: the old app is only
   # removed once the new one is in place, and comes back if the swap fails.
-  new="$dest/.Dialpal-install.app"
-  old="$dest/.Dialpal-old.app"
+  new="$dest/.Callwright-install.app"
+  old="$dest/.Callwright-old.app"
   rm -rf "$new" "$old"
-  ditto "$mount/Dialpal.app" "$new"
+  ditto "$mount/Callwright.app" "$new"
   xattr -dr com.apple.quarantine "$new" 2>/dev/null || true
-  [ -d "$dest/Dialpal.app" ] && mv "$dest/Dialpal.app" "$old"
-  if ! mv "$new" "$dest/Dialpal.app"; then
-    [ -d "$old" ] && mv "$old" "$dest/Dialpal.app"
+  [ -d "$dest/Callwright.app" ] && mv "$dest/Callwright.app" "$old"
+  if ! mv "$new" "$dest/Callwright.app"; then
+    [ -d "$old" ] && mv "$old" "$dest/Callwright.app"
     rm -rf "$new"
-    fail "couldn't put the new version in place. Your Dialpal is unchanged."
+    fail "couldn't put the new version in place. Your Callwright is unchanged."
   fi
   rm -rf "$old"
 
-  echo "Dialpal $version is installed. Opening it…"
-  open "$dest/Dialpal.app"
+  echo "Callwright $version is installed. Opening it…"
+  open "$dest/Callwright.app"
 }
 
 main

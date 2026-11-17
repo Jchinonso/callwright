@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
   <key>NSAudioCaptureUsageDescription</key>
-  <string>Dialpal transcribes the other people in your call.</string>
+  <string>Callwright transcribes the other people in your call.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Dialpal hears you during practice calls only. Your microphone is never used on real calls.</string>
+  <string>Callwright hears you during practice calls only. Your microphone is never used on real calls.</string>
   <key>NSScreenCaptureUsageDescription</key>
-  <string>Dialpal reads your screen to answer questions about it.</string>
+  <string>Callwright reads your screen to answer questions about it.</string>
   <key>LSUIElement</key>
   <true/>
 </dict>

@@ -1,5 +1,5 @@
 // Native `title` tooltips are drawn by macOS in a separate window that
-// Dialpal's content protection doesn't cover, so they leak into an
+// Callwright's content protection doesn't cover, so they leak into an
 // entire-screen share even while the overlay itself is hidden. Pull every
 // `title` off the DOM and draw an equivalent tooltip inside the page (the
 // protected webContents) instead. A MutationObserver keeps doing it for

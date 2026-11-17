@@ -3,7 +3,7 @@ import { createReadStream, mkdirSync, readdirSync, readFileSync, renameSync, rmS
 import { open } from "node:fs/promises";
 import path from "node:path";
 
-// Dialpal's one speech model: NVIDIA Parakeet TDT 0.6B v2 (English), int8,
+// Callwright's one speech model: NVIDIA Parakeet TDT 0.6B v2 (English), int8,
 // converted for sherpa-onnx by its authors. CC-BY-4.0 (NVIDIA).
 // Pinned to the repo's commit so the files always match the sha256 sums below, even if the repo changes.
 export const DEFAULT_BASE_URL = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/resolve/1ab9323565ddb038682214b292f588070a538ce2";
@@ -237,9 +237,9 @@ export async function downloadModel({ root, baseUrl = DEFAULT_BASE_URL, model = 
   return dir;
 }
 
-// Speech models from older versions of Dialpal (whisper.cpp's ggml-*.bin,
+// Speech models from older versions of Callwright (whisper.cpp's ggml-*.bin,
 // leftover .part downloads of them, and WhisperKit's folder), deleted once
-// Parakeet is in. Only these names, and only directly in Dialpal's own models
+// Parakeet is in. Only these names, and only directly in Callwright's own models
 // folder. Returns what went and the bytes freed.
 export function removeOldModels(root) {
   const removed = [];

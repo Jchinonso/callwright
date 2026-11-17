@@ -103,17 +103,17 @@ export class Listener extends EventEmitter {
     this.pending = [];
     this.working = false;
     this.running = false;
-    this.heardSound = false; // any sound since Dialpal opened
+    this.heardSound = false; // any sound since Callwright opened
     this.warnedSilent = false;
     this.role = "them"; // whose words its lines are
   }
 
-  // Loads the model when Dialpal opens, so the first Listen is instant.
+  // Loads the model when Callwright opens, so the first Listen is instant.
   prepare() {
     return this.asr?.load?.({ hotwords: this.hotwords });
   }
 
-  // The engine, once the model is in (Dialpal can open before it is).
+  // The engine, once the model is in (Callwright can open before it is).
   setAsr(asr) {
     this.asr = asr;
   }
@@ -127,7 +127,7 @@ export class Listener extends EventEmitter {
   start() {
     if (this.running) return true;
     if (!this.asr) {
-      this.emit("error", "The speech model is missing. Quit and reopen Dialpal to download it.");
+      this.emit("error", "The speech model is missing. Quit and reopen Callwright to download it.");
       return false;
     }
     this.running = true;
@@ -149,7 +149,7 @@ export class Listener extends EventEmitter {
     // access is off or the app hasn't been reopened since it was granted.
     // "silent" fires if nothing but zeros arrives for silentAfterMs. Nothing
     // playing yet (Listen pressed before the call starts) looks the same, so
-    // it fires at most once each time Dialpal opens (not per Listen), and never
+    // it fires at most once each time Callwright opens (not per Listen), and never
     // once any sound has come through: access is evidently working.
     clearTimeout(this.silentTimer);
     if (!this.heardSound && !this.warnedSilent) {
@@ -210,7 +210,7 @@ export class Listener extends EventEmitter {
         // Once per listen: the window gets a plain sentence; the details go to the log.
         if (!this.reportedFailure) {
           this.emit("detail", `transcription failed: ${r?.error}`);
-          this.emit("error", "Dialpal can't transcribe on this Mac right now, so it can't hear the call. Quit and reopen Dialpal, then press Listen. If it keeps happening, send the file dialpal.log from Library › Logs › Dialpal to whoever set Dialpal up.");
+          this.emit("error", "Callwright can't transcribe on this Mac right now, so it can't hear the call. Quit and reopen Callwright, then press Listen. If it keeps happening, send the file callwright.log from Library › Logs › Callwright to whoever set Callwright up.");
         }
         this.reportedFailure = true;
         continue;
@@ -240,7 +240,7 @@ export class MicListener extends Listener {
   start() {
     if (this.running) return true;
     if (!this.asr) {
-      this.emit("error", "The speech model is missing. Quit and reopen Dialpal to download it.");
+      this.emit("error", "The speech model is missing. Quit and reopen Callwright to download it.");
       return false;
     }
     this.running = true;

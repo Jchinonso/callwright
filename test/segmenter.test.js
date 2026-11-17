@@ -55,7 +55,7 @@ test("steady background noise is not mistaken for speech", () => {
 async function fakeTee(source) {
   const { mkdtempSync, writeFileSync, chmodSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
-  const dir = mkdtempSync(new URL("file://" + tmpdir() + "/dialpal-tee-").pathname);
+  const dir = mkdtempSync(new URL("file://" + tmpdir() + "/callwright-tee-").pathname);
   const bin = `${dir}/audiotee`;
   writeFileSync(bin, `#!/bin/sh\nhead -c 64000 ${source}\nsleep 8\n`);
   chmodSync(bin, 0o755);
@@ -199,9 +199,9 @@ test("listener with the real engine module and a stand-in model emits lines", as
   const { Asr } = await import("../src/asr.js");
   const { mkdtempSync, copyFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
-  const modelDir = mkdtempSync(`${tmpdir()}/dialpal-model-`);
+  const modelDir = mkdtempSync(`${tmpdir()}/callwright-model-`);
   copyFileSync(new URL("./fixtures/parakeet-tokens.txt", import.meta.url), `${modelDir}/tokens.txt`);
-  const asr = new Asr({ modelDir, env: { DIALPAL_TEST_ASR: new URL("./fixtures/fake-asr.mjs", import.meta.url).pathname } });
+  const asr = new Asr({ modelDir, env: { CALLWRIGHT_TEST_ASR: new URL("./fixtures/fake-asr.mjs", import.meta.url).pathname } });
   try {
     const l = new Listener({ asr, hotwords: ["Postgres"] });
     const got = new Promise((r) => l.once("line", r));

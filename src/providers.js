@@ -1,4 +1,4 @@
-// LLM providers behind one interface, so Dialpal isn't tied to one vendor.
+// LLM providers behind one interface, so Callwright isn't tied to one vendor.
 // Adding one means adding an entry here; prompts and features don't change.
 //
 //   stream({ model, system, parts, maxTokens, effort, onText }) -> { done, abort }
@@ -10,7 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 // List prices in USD per million tokens. Haiku's apply to prompts up to 100K
-// tokens, far above Dialpal's. A refusal fallback may bill at another model's
+// tokens, far above Callwright's. A refusal fallback may bill at another model's
 // rates, so costs shown are estimates. Haiku has no server-side fallback.
 export const ANTHROPIC_MODELS = {
   "claude-opus-5-5": { name: "Opus 5.5", fallback: true, price: { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.2 } },
@@ -241,7 +241,7 @@ function openaiCompatible({ apiKey, baseUrl, model: defaultModel }) {
   const cacheMark = (model) => (/^~?anthropic\//.test(String(model || defaultModel)) ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" });
   const messages = (system, content, model) => [{ role: "system", content: cacheable(model) ? [{ type: "text", text: system, cache_control: cacheMark(model) }] : system }, { role: "user", content }];
   // Newer OpenAI models take max_completion_tokens instead of max_tokens, and
-  // some servers (Groq, small local models) cap output below Dialpal's limit.
+  // some servers (Groq, small local models) cap output below Callwright's limit.
   // Learned from the first refusal and kept for the session; null = no limit sent.
   let limitParam = "max_tokens";
   const sendLimited = async (body, maxTokens, signal) => {

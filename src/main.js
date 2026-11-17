@@ -1,6 +1,6 @@
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, Notification, safeStorage, screen, shell, systemPreferences, Tray } from "electron";
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,24 +23,24 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // Files run by external programs (audiotee) must come from the
 // unpacked copy, not from inside app.asar.
 const unpacked = (p) => p.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
-// DIALPAL_TEST_DIR (UI tests): settings and logs in that folder, no keychain,
+// CALLWRIGHT_TEST_DIR (UI tests): settings and logs in that folder, no keychain,
 // no global shortcuts, and a see-through window that never takes focus.
-const TEST_DIR = process.env.DIALPAL_TEST_DIR;
+const TEST_DIR = process.env.CALLWRIGHT_TEST_DIR;
 if (TEST_DIR) {
   app.setPath("userData", TEST_DIR);
   app.setAppLogsPath(path.join(TEST_DIR, "logs"));
   // Notes and the call log too, so tests never write to the real Documents.
   app.setPath("documents", path.join(TEST_DIR, "documents"));
   // Small stand-ins for the model's files ([{ name, size, sha256 }]), served
-  // by the test from DIALPAL_MODELS_URL, so downloads run end to end. The
-  // engine is then a stand-in too (DIALPAL_TEST_ASR).
-  if (process.env.DIALPAL_TEST_MODEL_FILES) MODEL.files = JSON.parse(process.env.DIALPAL_TEST_MODEL_FILES);
+  // by the test from CALLWRIGHT_MODELS_URL, so downloads run end to end. The
+  // engine is then a stand-in too (CALLWRIGHT_TEST_ASR).
+  if (process.env.CALLWRIGHT_TEST_MODEL_FILES) MODEL.files = JSON.parse(process.env.CALLWRIGHT_TEST_MODEL_FILES);
 }
 const configPath = path.join(app.getPath("userData"), "config.json");
-const logPath = path.join(app.getPath("logs"), "dialpal.log");
+const logPath = path.join(app.getPath("logs"), "callwright.log");
 
 const LOG_MAX_BYTES = 1_000_000;
-let wiping = false; // Delete all Dialpal data is under way
+let wiping = false; // Delete all Callwright data is under way
 
 function log(...parts) {
   if (wiping) return; // deleting all data: don't write the log back
@@ -127,7 +127,7 @@ let prewarming = false;
 // Speech: one engine and one model, NVIDIA Parakeet TDT 0.6B v2 (English,
 // int8) through sherpa-onnx, on the CPU (see asr.js). Setup's speech step
 // downloads the model (about 660 MB) once; Listen works as soon as it's in.
-// The model loads when Dialpal opens, so the first Listen is instant.
+// The model loads when Callwright opens, so the first Listen is instant.
 // `speech` is the download and the engine, for setup, Settings and Listen.
 // status: checking (the files on disk), downloading, ready, error.
 // engine: off, loading, ready, failed.
@@ -138,7 +138,7 @@ let speechBroadcastTimer = null;
 const RETRY_DELAYS = [2000, 5000, 15000];
 
 const userModelsDir = () => path.join(app.getPath("userData"), "models");
-const modelsBaseUrl = () => process.env.DIALPAL_MODELS_URL || DEFAULT_BASE_URL;
+const modelsBaseUrl = () => process.env.CALLWRIGHT_MODELS_URL || DEFAULT_BASE_URL;
 let asr = null; // the engine, once the model is in
 
 // Progress arrives with every chunk; the window only needs a few updates a
@@ -167,7 +167,7 @@ function broadcastSpeech(now = false) {
 const downloadError = (e) => (/speech model|disk space/i.test(e?.message || "") ? e.message : "The speech model download failed. Check your connection.");
 
 // Speech models from older versions (whisper.cpp, WhisperKit) aren't used any
-// more: deleted once Parakeet is in, from Dialpal's own models folder only.
+// more: deleted once Parakeet is in, from Callwright's own models folder only.
 function removeOldSpeechModels() {
   try {
     const { removed, bytes } = removeOldModels(userModelsDir());
@@ -183,7 +183,7 @@ function setSpeechReady() {
   speech = { ...speech, status: "ready", received: total, total, error: null };
   removeOldSpeechModels();
   if (!asr) {
-    asr = new Asr({ modelDir: modelPath(userModelsDir()), env: TEST_DIR && process.env.DIALPAL_TEST_ASR ? { DIALPAL_TEST_ASR: process.env.DIALPAL_TEST_ASR } : {} });
+    asr = new Asr({ modelDir: modelPath(userModelsDir()), env: TEST_DIR && process.env.CALLWRIGHT_TEST_ASR ? { CALLWRIGHT_TEST_ASR: process.env.CALLWRIGHT_TEST_ASR } : {} });
     asr.on("log", (line) => log(`engine: ${line}`));
     asr.on("crash", (reason) => log(`engine crash: ${reason}`));
     asr.on("ready", ({ loadMs, used, skipped, reload }) => log(`engine=parakeet ${reload ? "reloaded" : "loaded"} loadMs=${loadMs} hotwords=${used}${skipped?.length ? ` skipped=${skipped.length}` : ""}`));
@@ -257,7 +257,7 @@ function setUpSpeech({ retry = true } = {}) {
 
 // usage is a provider's normalized { input, output, cacheRead, cacheWrite }.
 // Cost is null when the provider has no price list (OpenAI-compatible).
-// Updates: Dialpal looks for a newer release when it opens and every hour
+// Updates: Callwright looks for a newer release when it opens and every hour
 // (again in half an hour when the check couldn't reach GitHub). The next
 // check is a time of day, looked at every few minutes: a single long timer
 // stops counting while the Mac sleeps.
@@ -270,20 +270,20 @@ let nextUpdateCheckAt = 0;
 let update = { status: "none" };
 let updateInfo = null; // { version, url, size, sha256, page }
 let updateBroadcastAt = 0;
-const currentVersion = () => (TEST_DIR && process.env.DIALPAL_TEST_VERSION) || app.getVersion();
+const currentVersion = () => (TEST_DIR && process.env.CALLWRIGHT_TEST_VERSION) || app.getVersion();
 
 // Resolves with what it found (Settings > About shows it): available, latest,
 // failed, busy (an update is downloading) or off.
 async function checkUpdate() {
   // The UI tests check only against their own server; npm run dev never does.
-  if (TEST_DIR ? !process.env.DIALPAL_UPDATE_URL : !app.isPackaged) return "off";
+  if (TEST_DIR ? !process.env.CALLWRIGHT_UPDATE_URL : !app.isPackaged) return "off";
   if (update.status === "downloading" || update.status === "installing") return "busy";
   nextUpdateCheckAt = Date.now() + UPDATE_CHECK_MS;
   try {
     const found = await checkForUpdate({
       current: currentVersion(),
       arch: process.arch,
-      url: TEST_DIR ? process.env.DIALPAL_UPDATE_URL : RELEASES_URL,
+      url: TEST_DIR ? process.env.CALLWRIGHT_UPDATE_URL : RELEASES_URL,
       trusted: TEST_DIR ? () => true : undefined,
     });
     if (!found) return "latest";
@@ -309,7 +309,7 @@ async function installUpdate() {
     log("update: can't replace", bundle || process.execPath, "- opening the download page");
     return shell.openExternal(page);
   }
-  const dmg = path.join(app.getPath("temp"), `Dialpal-${version}-${process.arch}.dmg`);
+  const dmg = path.join(app.getPath("temp"), `Callwright-${version}-${process.arch}.dmg`);
   try {
     update = { status: "downloading", version, received: 0, total: size };
     broadcastState();
@@ -404,7 +404,7 @@ async function refreshModelList(prov = config.provider, baseUrl = config.openaiB
 
 // API keys live in the login keychain via /usr/bin/security, so they survive
 // rebuilds that change the app's code signature. One entry per provider.
-const KEYCHAIN = { service: "com.dialpal.overlay.api-key", accounts: { anthropic: "dialpal", openai: "openai", hubspot: "hubspot" } };
+const KEYCHAIN = { service: "com.callwright.overlay.api-key", accounts: { anthropic: "callwright", openai: "openai", hubspot: "hubspot" } };
 
 function readKeychainKey(account = KEYCHAIN.accounts.anthropic) {
   if (TEST_DIR) return null;
@@ -438,6 +438,49 @@ function writeKeychainKey(key, account = KEYCHAIN.accounts.anthropic) {
       execFileSync("/usr/bin/security", ["delete-generic-password", ...base], { stdio: "ignore" });
     } catch {}
   }
+}
+
+// Callwright was called Dialpal before 0.2.0. On the first launch under the
+// new name, move what Dialpal kept (settings and the speech model, logs,
+// notes and the call log) and copy its saved keys, so nothing has to be
+// set up or downloaded again. Anything already at the new place wins.
+const LEGACY = { name: "Dialpal", keychain: "com.dialpal.overlay.api-key", accounts: { anthropic: "dialpal", openai: "openai", hubspot: "hubspot" } };
+function moveInto(from, to) {
+  if (!existsSync(from) || from === to) return;
+  mkdirSync(to, { recursive: true });
+  for (const name of readdirSync(from)) {
+    const dest = path.join(to, name);
+    if (!existsSync(dest)) {
+      try {
+        renameSync(path.join(from, name), dest);
+      } catch {}
+    }
+  }
+  try {
+    if (!readdirSync(from).length) rmSync(from, { recursive: true });
+  } catch {}
+}
+function migrateFromDialpal() {
+  if (TEST_DIR) return;
+  const moved = [
+    [path.join(app.getPath("appData"), LEGACY.name), app.getPath("userData")],
+    [path.join(app.getPath("home"), "Library", "Logs", LEGACY.name), path.dirname(logPath)],
+    [path.join(app.getPath("documents"), LEGACY.name), notesDir()],
+  ].filter(([from]) => existsSync(from));
+  for (const [from, to] of moved) moveInto(from, to);
+  for (const [kind, account] of Object.entries(KEYCHAIN.accounts)) {
+    if (readKeychainKey(account)) continue;
+    let old = null;
+    try {
+      old = execFileSync("/usr/bin/security", ["find-generic-password", "-s", LEGACY.keychain, "-a", LEGACY.accounts[kind], "-w"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+    } catch {}
+    if (old) {
+      try {
+        writeKeychainKey(old, account);
+      } catch {}
+    }
+  }
+  if (moved.length) log(`moved ${moved.length} folder(s) from ${LEGACY.name}`);
 }
 
 function loadConfig() {
@@ -487,7 +530,7 @@ function saveConfig() {
   }
 }
 
-// The key saved by Dialpal (keychain), else one set in the environment.
+// The key saved by Callwright (keychain), else one set in the environment.
 const KEY_ENV = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
 const savedKey = () => (config.provider === "openai" ? config.openaiKey : config.apiKey) || null;
 function apiKey() {
@@ -552,7 +595,7 @@ function state() {
     shots: shots.map(({ id, thumb }) => ({ id, thumb })),
     hasKey: canAsk(),
     keyHint: apiKey() ? apiKey().slice(-4) : null,
-    // The environment variable the key comes from, when Dialpal didn't save
+    // The environment variable the key comes from, when Callwright didn't save
     // it: Remove can't take it away.
     keyFromEnv: !savedKey() && apiKey() ? KEY_ENV[config.provider] : null,
     busy: !!current && !current.checking,
@@ -576,7 +619,7 @@ function broadcastState() {
 }
 
 // Hidden from screen sharing also means out of the Dock and the app
-// switcher, which a full-screen share would show. Visible: Dialpal gets a
+// switcher, which a full-screen share would show. Visible: Callwright gets a
 // Dock icon like any app. (The UI tests leave the Dock alone.)
 //
 // Hardening: macOS can silently reset a window's NSWindowSharingType on
@@ -604,21 +647,21 @@ function applyInvisible() {
   }
 }
 
-// The menu bar macOS shows while Dialpal has a Dock icon. Electron's stock
+// The menu bar macOS shows while Callwright has a Dock icon. Electron's stock
 // menu would offer Reload (which drops the session), Developer Tools and
-// Close Window (which quits); this one has only what Dialpal means. The Edit
+// Close Window (which quits); this one has only what Callwright means. The Edit
 // menu is what makes copy, paste and undo work in the text boxes.
 function setAppMenu() {
   if (!app.isPackaged) return; // npm run dev keeps Reload and Developer Tools
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
-        label: "Dialpal",
+        label: "Callwright",
         submenu: [
-          { label: "Show Dialpal", click: () => showWindow() },
-          { label: "Hide Dialpal", click: () => hideWindow() },
+          { label: "Show Callwright", click: () => showWindow() },
+          { label: "Hide Callwright", click: () => hideWindow() },
           { type: "separator" },
-          { label: "Quit Dialpal", role: "quit" },
+          { label: "Quit Callwright", role: "quit" },
         ],
       },
       { role: "editMenu" },
@@ -706,7 +749,7 @@ function hideWindow() {
   if (!win) return;
   win.hide();
   if (!config.hideTipShown && !config.invisible && Notification.isSupported()) {
-    new Notification({ title: "Dialpal is hidden", body: `Click the Dialpal icon in the menu bar, or press ${formatAccel(shortcuts().toggleWindow)}, to bring it back.` }).show();
+    new Notification({ title: "Callwright is hidden", body: `Click the Callwright icon in the menu bar, or press ${formatAccel(shortcuts().toggleWindow)}, to bring it back.` }).show();
     config.hideTipShown = true;
     saveConfig();
   }
@@ -721,7 +764,7 @@ function startPosition(width, workArea) {
   return { x: Math.round(workArea.x + (workArea.width - width) / 2), y: workArea.y + 24 };
 }
 
-// After a monitor is unplugged, move Dialpal back on-screen if it was left off.
+// After a monitor is unplugged, move Callwright back on-screen if it was left off.
 function keepOnScreen() {
   if (!win || win.isDestroyed()) return;
   const b = win.getBounds();
@@ -757,12 +800,12 @@ function createTray() {
   tray.on("right-click", () => {
     tray.popUpContextMenu(
       Menu.buildFromTemplate([
-        { label: win?.isVisible() ? "Hide Dialpal" : "Show Dialpal", accelerator: shortcuts().toggleWindow, click: toggleWindow },
+        { label: win?.isVisible() ? "Hide Callwright" : "Show Callwright", accelerator: shortcuts().toggleWindow, click: toggleWindow },
         { label: listening ? "Stop listening" : "Start listening", accelerator: shortcuts().listen, enabled: !setupActive, click: toggleListening },
         { label: "Screenshot and answer", accelerator: shortcuts().snap, enabled: !setupActive, click: () => { showWindow(); send("snap-submit"); } },
         { label: "Save notes", enabled: !savingNotes, click: saveNotes },
         { type: "separator" },
-        { label: "Quit Dialpal", role: "quit" },
+        { label: "Quit Callwright", role: "quit" },
       ]),
     );
   });
@@ -780,7 +823,7 @@ class ScreenAccessError extends Error {}
 
 function screenAccessError() {
   return new ScreenAccessError(
-    "Dialpal can't see your screen. In System Settings > Privacy & Security > Screen & System Audio Recording, turn on Dialpal, then quit and reopen Dialpal.",
+    "Callwright can't see your screen. In System Settings > Privacy & Security > Screen & System Audio Recording, turn on Callwright, then quit and reopen Callwright.",
   );
 }
 
@@ -788,7 +831,7 @@ async function captureScreen() {
   // Don't pre-check access: Electron reports "denied" before macOS has ever
   // asked, and only the capture call itself makes macOS show the prompt.
   // The display under the pointer is the one being worked on, which with two
-  // monitors is often not the one Dialpal sits on.
+  // monitors is often not the one Callwright sits on.
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   // Keep the overlay out of its own screenshot even when invisibility is off.
   win?.setContentProtection(true);
@@ -1065,9 +1108,9 @@ async function compressSavedInstructions(text) {
   }
 }
 
-// Notes go to ~/Documents/Dialpal as Markdown: the model's summary (when a key is
+// Notes go to ~/Documents/Callwright as Markdown: the model's summary (when a key is
 // set), then the full transcript and every question asked.
-const notesDir = () => path.join(app.getPath("documents"), "Dialpal");
+const notesDir = () => path.join(app.getPath("documents"), "Callwright");
 let savingNotes = false;
 
 function notesFileName(date) {
@@ -1164,7 +1207,7 @@ async function saveNotes({ scorecard = null, practiceCall = null, override = nul
         crm = ` HubSpot didn't take it: ${e.message}.`;
       }
     }
-    send("notice", { level: crm.includes("didn't") ? "warn" : "ok", text: `${practiceCall ? "Practice saved" : "Notes saved"} to Documents/Dialpal.${crm}`, action: { type: "open", path: file } });
+    send("notice", { level: crm.includes("didn't") ? "warn" : "ok", text: `${practiceCall ? "Practice saved" : "Notes saved"} to Documents/Callwright.${crm}`, action: { type: "open", path: file } });
     return record;
   } catch (e) {
     log("save notes failed:", e);
@@ -1176,7 +1219,7 @@ async function saveNotes({ scorecard = null, practiceCall = null, override = nul
 }
 
 // HubSpot's address: the real API, or the UI tests' fake server.
-const hubspotOptions = () => (TEST_DIR && process.env.DIALPAL_HUBSPOT_URL ? { baseUrl: process.env.DIALPAL_HUBSPOT_URL } : {});
+const hubspotOptions = () => (TEST_DIR && process.env.CALLWRIGHT_HUBSPOT_URL ? { baseUrl: process.env.CALLWRIGHT_HUBSPOT_URL } : {});
 
 // ---------------------------------------------------------------------------
 // Practice calls. The model plays a prospect (see practice.js); the rep talks
@@ -1314,7 +1357,7 @@ async function startPractice(persona) {
   }
   practice.mic = micOk && !TEST_DIR;
   if (practice.mic) send("mic-start");
-  else if (!TEST_DIR) send("notice", { level: "warn", text: asr ? "Microphone access is off, so type your lines. Allow Dialpal in System Settings › Privacy & Security › Microphone to talk instead." : "The speech model isn't ready, so type your lines for now." });
+  else if (!TEST_DIR) send("notice", { level: "warn", text: asr ? "Microphone access is off, so type your lines. Allow Callwright in System Settings › Privacy & Security › Microphone to talk instead." : "The speech model isn't ready, so type your lines for now." });
   log(`practice start persona=${id} mic=${practice.mic}`);
   broadcastState();
   await prospectTurn({ opening: true });
@@ -1447,11 +1490,11 @@ function createListener() {
     send("notice", { level: "error", text });
   });
   // Nothing but silence since Listen: most often system audio access is off,
-  // or Dialpal wasn't reopened after it was turned on.
+  // or Callwright wasn't reopened after it was turned on.
   l.on("silent", () =>
     send("notice", {
       level: "warn",
-      text: "Dialpal hasn't heard any sound from your Mac yet. If something is playing, macOS is holding it back: allow Dialpal in Screen & System Audio Recording (also under System Audio Recording Only), then reopen Dialpal. macOS only sends audio after a reopen.",
+      text: "Callwright hasn't heard any sound from your Mac yet. If something is playing, macOS is holding it back: allow Callwright in Screen & System Audio Recording (also under System Audio Recording Only), then reopen Callwright. macOS only sends audio after a reopen.",
       action: "audio-access",
     }),
   );
@@ -1496,14 +1539,14 @@ const SHORTCUT_ACTIONS = {
     addShot();
   },
   // Works from any app, so say what changed: a stray press shouldn't leave
-  // Dialpal visible in a screen share unnoticed.
+  // Callwright visible in a screen share unnoticed.
   invisible: () => {
     config.invisible = !config.invisible;
     saveConfig();
     applyInvisible();
     broadcastState();
     const keys = formatAccel(shortcuts().invisible);
-    send("notice", config.invisible ? { level: "ok", text: `Hidden from screen sharing and the Dock (${keys}).` } : { level: "warn", text: `Dialpal is now visible in screen sharing and the Dock. Press ${keys} to hide it again.` });
+    send("notice", config.invisible ? { level: "ok", text: `Hidden from screen sharing and the Dock (${keys}).` } : { level: "warn", text: `Callwright is now visible in screen sharing and the Dock. Press ${keys} to hide it again.` });
   },
 };
 
@@ -1544,7 +1587,7 @@ ipcMain.handle("set-shortcut", (_e, action, accel) => {
   if (!(action in DEFAULT_SHORTCUTS)) return { error: "Unknown action." };
   const current = shortcuts();
   const clash = Object.entries(current).find(([a, k]) => a !== action && k === accel);
-  if (clash) return { error: "Another Dialpal action already uses that shortcut." };
+  if (clash) return { error: "Another Callwright action already uses that shortcut." };
   config.shortcuts = { ...(config.shortcuts || {}), [action]: accel };
   if (registerShortcuts().includes(accel)) {
     config.shortcuts[action] = current[action];
@@ -1810,7 +1853,7 @@ ipcMain.handle("practice-say", (_e, text) => {
 ipcMain.on("mic-pcm", (_e, chunk) => {
   if (practice.active && chunk) mic?.push(Buffer.from(chunk));
 });
-// Only opens files Dialpal itself wrote.
+// Only opens files Callwright itself wrote.
 ipcMain.handle("open-notes", (_e, file) => {
   const resolved = path.resolve(String(file));
   if (resolved.startsWith(notesDir() + path.sep)) shell.openPath(resolved);
@@ -1862,11 +1905,11 @@ ipcMain.handle("relaunch", () => {
   app.relaunch();
   app.quit();
 });
-// Settings › General › Delete all Dialpal data. Dragging an app to the Trash
+// Settings › General › Delete all Callwright data. Dragging an app to the Trash
 // tells it nothing, so this is the uninstall step: the API keys leave the
 // keychain now, notes go to the Trash if asked, and the settings and logs
-// folders are removed just after Dialpal quits (Chromium writes there until
-// then). Only folders named Dialpal are ever removed.
+// folders are removed just after Callwright quits (Chromium writes there until
+// then). Only folders named Callwright are ever removed.
 ipcMain.handle("delete-all-data", async (_e, options) => {
   wiping = true;
   current?.abort();
@@ -1878,7 +1921,7 @@ ipcMain.handle("delete-all-data", async (_e, options) => {
     } catch {}
   }
   if (options?.notes && existsSync(notesDir())) await shell.trashItem(notesDir()).catch(() => {});
-  const dirs = [app.getPath("userData"), path.dirname(logPath)].filter((d) => TEST_DIR ? d.startsWith(TEST_DIR) : /^dialpal$/i.test(path.basename(d)));
+  const dirs = [app.getPath("userData"), path.dirname(logPath)].filter((d) => TEST_DIR ? d.startsWith(TEST_DIR) : /^callwright$/i.test(path.basename(d)));
   spawn("/bin/sh", ["-c", 'sleep 2; rm -rf "$@"', "sh", ...dirs], { detached: true, stdio: "ignore" }).unref();
   app.quit();
 });
@@ -1891,6 +1934,7 @@ app.on("activate", () => windowReady && showWindow());
 
 app.whenReady().then(() => {
   log("start", app.getVersion(), "screen status:", systemPreferences.getMediaAccessStatus("screen"));
+  migrateFromDialpal();
   loadConfig();
   app.setLoginItemSettings({ openAtLogin: config.openAtLogin });
   applyInvisible(); // the Dock icon, without waiting for the window to load

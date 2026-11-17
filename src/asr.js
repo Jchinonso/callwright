@@ -1,6 +1,6 @@
-// Dialpal's speech engine: NVIDIA Parakeet TDT 0.6B v2 (English, int8) through
+// Callwright's speech engine: NVIDIA Parakeet TDT 0.6B v2 (English, int8) through
 // sherpa-onnx, on the CPU, in its own process (asr-worker.js): Electron's
-// utility process inside Dialpal, a Node child process elsewhere (tests,
+// utility process inside Callwright, a Node child process elsewhere (tests,
 // scripts). The model loads once (about 2 s) and stays loaded; each phrase
 // then takes about 0.5-0.8 s on an M1.
 //
@@ -15,7 +15,7 @@ import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 
 const WORKER = fileURLToPath(new URL("./asr-worker.js", import.meta.url));
-// Crashes in one session before Dialpal stops restarting the engine.
+// Crashes in one session before Callwright stops restarting the engine.
 const MAX_CRASHES = 3;
 // A phrase is at most 12 s of audio and takes about a second; this only
 // catches a stuck engine.
@@ -49,7 +49,7 @@ export class Asr extends EventEmitter {
     let child;
     if (process.versions.electron && process.type === "browser") {
       const { utilityProcess } = await import("electron");
-      child = utilityProcess.fork(this.workerPath, [], { serviceName: "Dialpal Speech", env, stdio: ["ignore", "ignore", "pipe"] });
+      child = utilityProcess.fork(this.workerPath, [], { serviceName: "Callwright Speech", env, stdio: ["ignore", "ignore", "pipe"] });
       this.send = (m) => child.postMessage(m);
     } else {
       child = fork(this.workerPath, [], { env, serialization: "advanced", stdio: ["ignore", "ignore", "pipe", "ipc"] });

@@ -1,9 +1,9 @@
 // The real app (Electron, test mode) with its one speech engine: setup
 // downloads the Parakeet model's files (small stand-ins served by a local
-// server: DIALPAL_MODELS_URL, DIALPAL_TEST_MODEL_FILES), checks them, starts
-// the engine (a stand-in for sherpa-onnx: DIALPAL_TEST_ASR, so the real model
+// server: CALLWRIGHT_MODELS_URL, CALLWRIGHT_TEST_MODEL_FILES), checks them, starts
+// the engine (a stand-in for sherpa-onnx: CALLWRIGHT_TEST_ASR, so the real model
 // is never loaded), and removes old whisper.cpp and WhisperKit models.
-// Set DIALPAL_SKIP_UI=1 to skip.
+// Set CALLWRIGHT_SKIP_UI=1 to skip.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -19,7 +19,7 @@ import { MODEL } from "../src/models.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
 const FAKE_ASR = path.join(here, "fixtures", "fake-asr.mjs");
-const skip = !!process.env.DIALPAL_SKIP_UI || process.platform !== "darwin";
+const skip = !!process.env.CALLWRIGHT_SKIP_UI || process.platform !== "darwin";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const dirs = [];
 
@@ -77,16 +77,16 @@ after(() => {
 });
 
 function newDir(extra = {}) {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-uisp-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "callwright-uisp-"));
   dirs.push(dir);
   writeFileSync(path.join(dir, "config.json"), JSON.stringify({ provider: "openai", openaiBaseUrl: "http://127.0.0.1:9/v1", openaiModel: "fake", onboarded: true, style: "brief", autoScreen: false, ...extra }));
   return dir;
 }
 
-const readLog = (dir) => (existsSync(path.join(dir, "logs", "dialpal.log")) ? readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8") : "");
+const readLog = (dir) => (existsSync(path.join(dir, "logs", "callwright.log")) ? readFileSync(path.join(dir, "logs", "callwright.log"), "utf8") : "");
 const modelDir = (dir) => path.join(dir, "models", MODEL.dir);
 
-// What an older Dialpal left in its models folder.
+// What an older Callwright left in its models folder.
 function oldModels(dir) {
   const models = path.join(dir, "models");
   mkdirSync(path.join(models, "whisperkit", "openai_whisper-large-v3-v20240930_turbo"), { recursive: true });
@@ -106,11 +106,11 @@ async function waitFor(check, ms = 15000) {
   throw new Error(`timed out waiting for ${check}`);
 }
 
-// Starts Dialpal; resolves with { run, quit } once its window answers.
+// Starts Callwright; resolves with { run, quit } once its window answers.
 async function launch(dir, env = {}) {
   const port = 9800 + Math.floor(Math.random() * 90);
   const app = spawn(electronPath, [root, `--remote-debugging-port=${port}`], {
-    env: { ...process.env, DIALPAL_TEST_DIR: dir, DIALPAL_MODELS_URL: MODELS_URL, DIALPAL_TEST_MODEL_FILES: JSON.stringify(FILES), DIALPAL_TEST_ASR: FAKE_ASR, ...env },
+    env: { ...process.env, CALLWRIGHT_TEST_DIR: dir, CALLWRIGHT_MODELS_URL: MODELS_URL, CALLWRIGHT_TEST_MODEL_FILES: JSON.stringify(FILES), CALLWRIGHT_TEST_ASR: FAKE_ASR, ...env },
     stdio: "ignore",
   });
   let page;
@@ -120,7 +120,7 @@ async function launch(dir, env = {}) {
       page = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === "page");
     } catch {}
   }
-  assert.ok(page, "Dialpal's window never appeared");
+  assert.ok(page, "Callwright's window never appeared");
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   const waiting = new Map();
   let nextId = 0;
@@ -167,7 +167,7 @@ async function settings(run) {
   };`);
 }
 
-test("a Mac upgrading from an older Dialpal: setup reopens at the speech step, downloads Parakeet, starts it, and removes the old models", { skip }, async () => {
+test("a Mac upgrading from an older Callwright: setup reopens at the speech step, downloads Parakeet, starts it, and removes the old models", { skip }, async () => {
   const dir = newDir({ transcription: "fast", whisperMode: "cpu", turboOk: true, whisperkitEnabled: true });
   oldModels(dir);
   served.length = 0;

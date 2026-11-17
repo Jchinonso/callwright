@@ -1,7 +1,7 @@
-// Clicks through the real app: Electron in test mode (DIALPAL_TEST_DIR: its own
+// Clicks through the real app: Electron in test mode (CALLWRIGHT_TEST_DIR: its own
 // settings folder, no keychain, no global shortcuts, a see-through window),
 // answered by a fake OpenAI-compatible server, driven over the DevTools
-// protocol. Set DIALPAL_SKIP_UI=1 to skip.
+// protocol. Set CALLWRIGHT_SKIP_UI=1 to skip.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -15,7 +15,7 @@ import electronPath from "electron";
 import { MODEL } from "../src/models.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const skip = !!process.env.DIALPAL_SKIP_UI || process.platform !== "darwin";
+const skip = !!process.env.CALLWRIGHT_SKIP_UI || process.platform !== "darwin";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The fake model: streams a fixed interview-style answer and records requests.
@@ -71,7 +71,7 @@ before(async () => {
         res.writeHead(200, { "content-type": "application/json" });
         return res.end(JSON.stringify(latestRelease));
       }
-      // The fake HubSpot (DIALPAL_HUBSPOT_URL).
+      // The fake HubSpot (CALLWRIGHT_HUBSPOT_URL).
       if (req.url.startsWith("/hubspot/")) {
         hubspotRequests.push({ method: req.method, url: req.url, auth: req.headers.authorization, body: body ? JSON.parse(body) : null });
         res.writeHead(req.url.includes("/search") ? 200 : 201, { "content-type": "application/json" });
@@ -138,13 +138,13 @@ before(async () => {
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   modelUrl = `http://127.0.0.1:${server.address().port}/v1`;
 
-  dir = mkdtempSync(path.join(os.tmpdir(), "dialpal-ui-"));
+  dir = mkdtempSync(path.join(os.tmpdir(), "callwright-ui-"));
   writeFileSync(path.join(dir, "config.json"), JSON.stringify({ provider: "openai", openaiBaseUrl: modelUrl, openaiModel: "fake", autoScreen: false, style: "brief",
     // As written by builds before 1.2.4: every setting saved, Opus included.
     model: "claude-opus-5-5", effort: "low", invisible: true }));
   // The speech model is already installed in this folder (a stand-in: the
   // real tokens.txt and a tiny encoder), so the UI tests don't download it,
-  // and the engine is a stand-in too (DIALPAL_TEST_ASR).
+  // and the engine is a stand-in too (CALLWRIGHT_TEST_ASR).
   const modelDir = path.join(dir, "models", MODEL.dir);
   mkdirSync(modelDir, { recursive: true });
   copyFileSync(path.join(root, "test", "fixtures", "parakeet-tokens.txt"), path.join(modelDir, "tokens.txt"));
@@ -155,7 +155,7 @@ before(async () => {
   });
   const port = 9400 + Math.floor(Math.random() * 500);
   app = spawn(electronPath, [root, `--remote-debugging-port=${port}`], {
-    env: { ...process.env, DIALPAL_HUBSPOT_URL: `${modelUrl.replace(/\/v1$/, "")}/hubspot`, DIALPAL_TEST_DIR: dir, DIALPAL_MODELS_URL: "http://127.0.0.1:9", DIALPAL_TEST_MODEL_FILES: JSON.stringify(files), DIALPAL_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs"), DIALPAL_TEST_VERSION: "1.0.0", DIALPAL_UPDATE_URL: `${modelUrl.replace(/\/v1$/, "")}/releases/latest` },
+    env: { ...process.env, CALLWRIGHT_HUBSPOT_URL: `${modelUrl.replace(/\/v1$/, "")}/hubspot`, CALLWRIGHT_TEST_DIR: dir, CALLWRIGHT_MODELS_URL: "http://127.0.0.1:9", CALLWRIGHT_TEST_MODEL_FILES: JSON.stringify(files), CALLWRIGHT_TEST_ASR: path.join(root, "test", "fixtures", "fake-asr.mjs"), CALLWRIGHT_TEST_VERSION: "1.0.0", CALLWRIGHT_UPDATE_URL: `${modelUrl.replace(/\/v1$/, "")}/releases/latest` },
     stdio: "ignore",
   });
   let page;
@@ -165,7 +165,7 @@ before(async () => {
       page = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === "page");
     } catch {}
   }
-  assert.ok(page, "Dialpal's window never appeared");
+  assert.ok(page, "Callwright's window never appeared");
   ws = new WebSocket(page.webSocketDebuggerUrl);
   ws.onmessage = (m) => {
     const d = JSON.parse(m.data);
@@ -226,7 +226,7 @@ test("setup: a missing speech model gets a compulsory step with progress and Try
   await click("#obNext");
   assert.equal(await run(`return onboarding.step;`), "speech");
   assert.equal(await run(`return document.querySelector('#onboard [data-step="speech"] .ob-title').textContent;`), "Download the speech model");
-  assert.match(await run(`return document.querySelector('#onboard [data-step="speech"] .ob-lead').textContent;`), /Dialpal needs this to transcribe calls\. This one-time download is about 660 MB\./);
+  assert.match(await run(`return document.querySelector('#onboard [data-step="speech"] .ob-lead').textContent;`), /Callwright needs this to transcribe calls\. This one-time download is about 660 MB\./);
   assert.equal(await run(`return document.getElementById("obSpeechMeta").textContent;`), "123 of 661 MB");
   assert.equal(await run(`return document.getElementById("obNext").textContent;`), "Continue");
   assert.match(await run(`return document.getElementById("obSpeechFill").style.width;`), /^18\.6/);
@@ -277,7 +277,7 @@ test("settings: Speech is one plain row, Parakeet on this Mac, with download sta
   await set({ engine: "loading" });
   assert.equal(await text(), "Loading the speech model…");
   await set({ engine: "failed" });
-  assert.equal(await text(), "The speech engine stopped. Quit and reopen Dialpal.");
+  assert.equal(await text(), "The speech engine stopped. Quit and reopen Callwright.");
   await set({ status: "error", received: 1000, engine: "off", error: "The speech model download failed. Check your connection." });
   assert.equal(await text(), "The speech model download failed. Check your connection.");
   assert.ok(await shown("speechRetry"));
@@ -679,7 +679,7 @@ test("⌘↵ doesn't stop an auto-answer already under way; Stop does; typing se
   await until(`answers.at(-1).status !== "streaming" && !state.busy`);
 });
 
-test("typing a question while Dialpal waits for a heard one sends the typed one instead", { skip }, async () => {
+test("typing a question while Callwright waits for a heard one sends the typed one instead", { skip }, async () => {
   // Start from a quiet app: an earlier answer still streaming would send a
   // state update that resets the faked listening state mid-test.
   await until(`!state.busy && !state.savingNotes`);
@@ -704,7 +704,7 @@ test("typing a question while Dialpal waits for a heard one sends the typed one 
 
 // Turn-end checks: requests that carry the gated instruction, and the log.
 const isGated = (r) => !!r.messages?.[1]?.content?.at?.(-1)?.text?.includes("reply exactly <none>");
-const appLog = () => readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8");
+const appLog = () => readFileSync(path.join(dir, "logs", "callwright.log"), "utf8");
 async function waitFor(fn, ms = 5000) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
@@ -772,7 +772,7 @@ test("auto-answer: one turn check per turn, however long the quiet lasts", { ski
 });
 
 // The last "ask id=" line in the app's log.
-const lastAskLog = () => readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8").split("\n").filter((l) => / ask id=/.test(l)).at(-1) || "";
+const lastAskLog = () => readFileSync(path.join(dir, "logs", "callwright.log"), "utf8").split("\n").filter((l) => / ask id=/.test(l)).at(-1) || "";
 const askedText = (r) => r.messages[1].content.at(-1).text;
 
 test("Think harder: shows on a quick spoken answer only, and re-asks the same question with more thinking", { skip }, async () => {
@@ -1077,7 +1077,7 @@ test("provider form: cards switch provider, models load, Test connection resets 
 test("settings: the model hint shows known prices, and Depth hides for models without effort", { skip }, async () => {
   await run(`state.provider = "anthropic"; state.modelOptions = []; state.model = "claude-haiku-5-5"; state.effortSupported = true;
     setMenu(true); document.querySelector('#settingsTabs [data-tab="answers"]').click(); render();`);
-  // No list fetched yet: the models Dialpal knows are offered.
+  // No list fetched yet: the models Callwright knows are offered.
   assert.deepEqual(await run(`return settingsModels.map((m) => m.id);`), ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]);
   assert.match(await run(`return document.getElementById("modelHint").textContent;`), /Haiku 5\.5: \$0\.1 \/ \$0\.5 per million tokens/);
   assert.equal(await run(`return document.getElementById("effortRow").hidden;`), false);
@@ -1131,18 +1131,18 @@ test("settings: the model dropdown lists state.modelOptions and saves the choice
 test("update bar: shows a newer version, progress, and hides on Later and during a call", { skip }, async () => {
   const bar = (u, extra = "") => run(`state.update = ${JSON.stringify(u)}; ${extra} render(); return $("updateBar").hidden ? "" : $("updateText").textContent.replace(/ Save notes first.*$/, "") + "|" + $("updateBtn").hidden + "|" + $("updateBtn").textContent;`);
   assert.equal(await bar({ status: "none" }), "");
-  assert.equal(await bar({ status: "available", version: "9.9.9" }), "Dialpal 9.9.9 is available.|false|Update");
+  assert.equal(await bar({ status: "available", version: "9.9.9" }), "Callwright 9.9.9 is available.|false|Update");
   assert.equal(await bar({ status: "available", version: "9.9.9" }, "state.listening = true;"), "", "not during a call");
-  assert.equal(await bar({ status: "downloading", version: "9.9.9", received: 25, total: 100 }, "state.listening = false;"), "Downloading Dialpal 9.9.9: 25%|true|Update");
+  assert.equal(await bar({ status: "downloading", version: "9.9.9", received: 25, total: 100 }, "state.listening = false;"), "Downloading Callwright 9.9.9: 25%|true|Update");
   assert.equal(await bar({ status: "error", version: "9.9.9", error: "The update download was corrupted. Try again." }), "The update download was corrupted. Try again.|false|Try again");
   // With a session under way, the bar says updating will clear it.
   const count = await run(`return state.transcriptCount;`);
-  assert.match(await run(`state.update = { status: "available", version: "9.9.9" }; state.transcriptCount = 3; render(); return $("updateText").textContent;`), /^Dialpal 9\.9\.9 is available\. Save notes first: updating restarts Dialpal and clears this session\.$/);
+  assert.match(await run(`state.update = { status: "available", version: "9.9.9" }; state.transcriptCount = 3; render(); return $("updateText").textContent;`), /^Callwright 9\.9\.9 is available\. Save notes first: updating restarts Callwright and clears this session\.$/);
   await run(`state.transcriptCount = ${count}; render();`);
   await bar({ status: "available", version: "9.9.9" });
   await click("#updateLater");
   assert.equal(await shown("updateBar"), false, "Later hides it");
-  assert.equal(await bar({ status: "available", version: "9.9.10" }), "Dialpal 9.9.10 is available.|false|Update", "a newer one shows again");
+  assert.equal(await bar({ status: "available", version: "9.9.10" }), "Callwright 9.9.10 is available.|false|Update", "a newer one shows again");
   await bar({ status: "none" });
 });
 
@@ -1159,16 +1159,16 @@ test("Settings tabs are named for what they hold; About shows the version and ch
   await click('#settingsTabs [data-tab="general"]');
   await click('#settingsTabs [data-tab="about"]');
   assert.match(await run(`return $("updateCheckMeta").textContent;`), /checks by itself/);
-  latestRelease = { tag_name: "v9.9.9", assets: [{ name: `Dialpal-9.9.9-${process.arch}.dmg`, size: 10, digest: `sha256:${"a".repeat(64)}`, browser_download_url: "http://127.0.0.1:9/Dialpal.dmg" }] };
+  latestRelease = { tag_name: "v9.9.9", assets: [{ name: `Callwright-9.9.9-${process.arch}.dmg`, size: 10, digest: `sha256:${"a".repeat(64)}`, browser_download_url: "http://127.0.0.1:9/Callwright.dmg" }] };
   await click("#updateCheckBtn");
-  await until(`$("updateCheckTitle").textContent === "Update to Dialpal 9.9.9"`);
-  assert.match(await run(`return $("updateCheckMeta").textContent;`), /^Downloads it, installs it and reopens Dialpal\./);
-  assert.match(await run(`return $("updateBar").hidden ? "" : $("updateText").textContent;`), /^Dialpal 9\.9\.9 is available\./);
+  await until(`$("updateCheckTitle").textContent === "Update to Callwright 9.9.9"`);
+  assert.match(await run(`return $("updateCheckMeta").textContent;`), /^Downloads it, installs it and reopens Callwright\./);
+  assert.match(await run(`return $("updateBar").hidden ? "" : $("updateText").textContent;`), /^Callwright 9\.9\.9 is available\./);
   await click("#updateLater");
   assert.equal(await shown("updateBar"), false);
-  assert.equal(await run(`return $("updateCheckTitle").textContent;`), "Update to Dialpal 9.9.9", "still offered in About after Later");
+  assert.equal(await run(`return $("updateCheckTitle").textContent;`), "Update to Callwright 9.9.9", "still offered in About after Later");
   // While it downloads, the row shows progress and can't be pressed twice.
-  assert.equal(await run(`state.update = { status: "downloading", version: "9.9.9", received: 50, total: 100 }; render(); return $("updateCheckMeta").textContent + "|" + $("updateCheckBtn").disabled;`), "Downloading Dialpal 9.9.9: 50%|true");
+  assert.equal(await run(`state.update = { status: "downloading", version: "9.9.9", received: 50, total: 100 }; render(); return $("updateCheckMeta").textContent + "|" + $("updateCheckBtn").disabled;`), "Downloading Callwright 9.9.9: 50%|true");
   await run(`state.update = { status: "available", version: "9.9.9" }; render();`);
   await click('#settingsTabs [data-tab="answers"]');
   await click("#menuBtn");
@@ -1178,19 +1178,19 @@ test("the top bar's X asks before quitting during a call", { skip }, async () =>
   await run(`state.listening = true; render();`);
   await click("#quitTopBtn");
   assert.match(await run(`return $("notice").hidden ? "" : $("notice").textContent;`), /listening to your call\. Click the X again to quit/);
-  assert.equal(await run(`return $("quitTopBtn").classList.contains("armed") + "|" + $("quitTopBtn").getAttribute("data-tt");`), "true|Click again to quit Dialpal");
+  assert.equal(await run(`return $("quitTopBtn").classList.contains("armed") + "|" + $("quitTopBtn").getAttribute("data-tt");`), "true|Click again to quit Callwright");
   await run(`state.listening = false; render();`);
 });
 
 test("the no-sound warning offers settings and a reopen", { skip }, async () => {
-  const labels = await run(`showNotice({ level: "warn", text: "Dialpal hasn't heard any sound", action: "audio-access" }); return [...document.querySelectorAll("#notice .notice-action")].map((b) => b.textContent);`);
-  assert.deepEqual(labels, ["Open settings", "Reopen Dialpal"]);
+  const labels = await run(`showNotice({ level: "warn", text: "Callwright hasn't heard any sound", action: "audio-access" }); return [...document.querySelectorAll("#notice .notice-action")].map((b) => b.textContent);`);
+  assert.deepEqual(labels, ["Open settings", "Reopen Callwright"]);
   await run(`document.getElementById("notice").hidden = true;`);
 });
 
 // Last: it deletes the test app's data and quits it.
 // Practice calls, the call log, stats and HubSpot.
-const docs = () => path.join(dir, "documents", "Dialpal");
+const docs = () => path.join(dir, "documents", "Callwright");
 const callLog = () => readFileSync(path.join(docs(), "calls.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
 
 test("practice call: the prospect picks up, a typed line gets a reply, a hint is a Sales reply, End call scores and saves", { skip }, async () => {
@@ -1449,12 +1449,12 @@ test("card numbers are blanked on the Mac before they're shown, saved or sent", 
   assert.ok(!sent.includes("4242 4242"), "the full card never reaches the model");
   assert.ok(!sent.includes("737"), "nor the security code");
   assert.match(sent, /\[card ending 4242\]/);
-  assert.ok(!readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8").includes("4242 4242"), "nor the log");
-  assert.match(readFileSync(path.join(dir, "logs", "dialpal.log"), "utf8"), /redacted card=1 cvv=1/);
+  assert.ok(!readFileSync(path.join(dir, "logs", "callwright.log"), "utf8").includes("4242 4242"), "nor the log");
+  assert.match(readFileSync(path.join(dir, "logs", "callwright.log"), "utf8"), /redacted card=1 cvv=1/);
   await run(`state.listening = false; await g.clear(); answers = []; page = -1; render();`);
 });
 
-test("Delete all Dialpal data: confirms, removes settings and logs, and quits", { skip }, async () => {
+test("Delete all Callwright data: confirms, removes settings and logs, and quits", { skip }, async () => {
   const { existsSync } = await import("node:fs");
   assert.ok(existsSync(path.join(dir, "config.json")));
   await run(`setMenu(true); document.querySelector('#settingsTabs [data-tab="general"]').click();`);

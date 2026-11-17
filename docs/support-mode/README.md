@@ -1,12 +1,12 @@
-# Support mode: Dialpal for customer care calls
+# Support mode: Callwright for customer care calls
 
 Status: proposal, not built. The build plan is in [PLAN.md](PLAN.md).
 
 ## 1. Summary
 
-Dialpal today helps a sales rep on a cold call. It hears the prospect, flags objections, and shows the next line to say from a product brief. Support mode reuses the same engine for the other side of the business: a support agent on a call with a customer who has a problem.
+Callwright today helps a sales rep on a cold call. It hears the prospect, flags objections, and shows the next line to say from a product brief. Support mode reuses the same engine for the other side of the business: a support agent on a call with a customer who has a problem.
 
-On a support call Dialpal hears the customer and works out what they need. It shows the agent one thing to say and one thing to do next, taken only from the team's knowledge base. Card numbers and other sensitive details are blanked out before any text leaves the Mac. When the call ends, a one-tap wrap-up logs the outcome as a ticket.
+On a support call Callwright hears the customer and works out what they need. It shows the agent one thing to say and one thing to do next, taken only from the team's knowledge base. Card numbers and other sensitive details are blanked out before any text leaves the Mac. When the call ends, a one-tap wrap-up logs the outcome as a ticket.
 
 About 70% of what Support mode needs already exists. The work is a new prompt, a knowledge base instead of a product brief, support-specific buttons and outcomes, redaction of sensitive data, and practice callers.
 
@@ -21,7 +21,7 @@ About 70% of what Support mode needs already exists. The work is a new prompt, a
 | Segment | Fit | Notes |
 | --- | --- | --- |
 | Solo founders and small teams taking support calls on a Mac | Strong | Same buyer as Sales mode. No contact-centre platform to integrate with. |
-| Small support teams (2 to 20 agents) using Aircall, Zoom Phone, Dialpad, RingCentral or a browser softphone on Macs | Good | The call audio plays through the Mac, so Dialpal hears it. |
+| Small support teams (2 to 20 agents) using Aircall, Zoom Phone, Dialpad, RingCentral or a browser softphone on Macs | Good | The call audio plays through the Mac, so Callwright hears it. |
 | Agencies and outsourced support on Macs | Good | Many clients, many knowledge bases: needs per-client knowledge bases (later). |
 | Large contact centres (Five9, Genesys, NICE, Amazon Connect) | Poor | Mostly Windows, centrally managed, buy from Cresta, Balto, Observe.AI. Out of scope. |
 
@@ -38,11 +38,11 @@ About 70% of what Support mode needs already exists. The work is a new prompt, a
 
 ### Non-goals (for the first version)
 
-- Taking payments or processing refunds. Dialpal suggests what to say. It never acts in other systems.
+- Taking payments or processing refunds. Callwright suggests what to say. It never acts in other systems.
 - Reading or writing the customer's account in the team's own systems (order lookup, subscription status). That comes later through integrations.
 - Windows.
 - Chat and email support. This is for voice calls.
-- Replacing a ticketing system. Dialpal logs to one, or to its CSV.
+- Replacing a ticketing system. Callwright logs to one, or to its CSV.
 
 ## 5. How a support call works
 
@@ -152,7 +152,7 @@ This is a hard requirement. Callers read out card numbers, security codes and ID
 
 ### Limits to state openly
 
-- Speech recognition can split or mishear digits, so redaction is best effort, not a compliance guarantee. Teams that take card payments over the phone should keep doing it in a PCI-compliant system (a payment IVR or pause-and-resume recording) and not read cards aloud with Dialpal listening.
+- Speech recognition can split or mishear digits, so redaction is best effort, not a compliance guarantee. Teams that take card payments over the phone should keep doing it in a PCI-compliant system (a payment IVR or pause-and-resume recording) and not read cards aloud with Callwright listening.
 - Names, emails and addresses are not redacted: the agent needs them, and they're needed to log the ticket.
 
 ## 9. Practice callers
@@ -201,7 +201,7 @@ Sales and Support stats are shown separately (records carry a `mode` field).
 
 ## 14. Competition and positioning
 
-| Product | What it is | Dialpal's angle |
+| Product | What it is | Callwright's angle |
 | --- | --- | --- |
 | Cresta, Balto, Observe.AI | Real-time agent assist for contact centres, sold to enterprises | Self-serve, works on any Mac softphone, transcription stays on the Mac |
 | Zendesk AI, Intercom Fin | AI inside the ticketing tool, mostly chat and email | Live voice calls, any phone system |
